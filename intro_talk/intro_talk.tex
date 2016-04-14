@@ -1,0 +1,298 @@
+\documentclass[xcolor=svgnames]{beamer}
+
+\usetheme{umbc1} 
+%\usecolortheme{default}
+
+\usepackage{/Users/paigejo/mystyle_beamer}
+\usepackage{multicol}
+\usepackage{verbatim}
+\usepackage{capt-of}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{hyperref}
+\hypersetup{colorlinks,linkcolor=,urlcolor=Blue}
+
+% keep only the style and the slide number in the footer:
+\setbeamertemplate{footline}[text line]{%
+  \vbox{%
+    \insertvrule{2.0pt}{umbc@decorations.fg!50!bg}%
+    \begin{beamercolorbox}[wd=\paperwidth,ht=2.25ex,dp=1ex]{umbc@decorations}%
+            \Tiny\hspace*{4.65in}\insertframenumber{} %/ \inserttotalframenumber\hspace*{2ex}\hspace{4mm}
+    \end{beamercolorbox}}}
+
+
+%\beamertemplatenavigationsymbolsempty
+%\setbeamertemplate{footline}[frame number]
+
+\title{~\\~\\Geostatistical inference under preferential sampling: introduction
+\\
+{\small By Peter Diggle, Raquel Menezes, and Ting-li Su}
+}
+\author[John Paige]{John Paige}
+\date[\today]{\vspace{.3in} \small \\ \today}
+\institute[University of Washington] % (optional, but mostly needed)
+{
+  \vspace{.1in} \\ Statistics Department\\
+{\sc  University of Washington  }
+}
+
+\begin{document}
+\setlength{\columnsep}{.5cm}
+
+
+\frame{\titlepage}
+
+%---------------------------------------------------------------------------------------------------------------------------------------
+
+%\begin{frame}
+ % \frametitle{Outline}
+ % \tableofcontents
+%\end{frame}
+
+
+%----------------------------------------------------------------------------------------------------------------------------------------
+%  Section 1
+%----------------------------------------------------------------------------------------------------------------------------------------
+\section{Introduction}
+
+%\begin{frame}
+%  \frametitle{Outline}
+%  \tableofcontents[currentsection]
+%\end{frame}
+
+%\frame{\tableofcontents}
+
+%\subsection{Introduction to Problem}
+
+\begin{frame}
+\frametitle{Introduction to the Problem}
+\begin{itemize}
+\item \emph{Geostatistics} involves modeling a process that is continuous in space measured at discrete locations
+\item Often, data is assumed to be distributed randomly throughout the domain
+\item What happens when the chance of sampling the process is tied to the value of the process itself?
+\begin{itemize}
+\item This is called \emph{preferential sampling}
+\end{itemize}
+
+\end{itemize}
+
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Motivating Dataset}
+\begin{columns}[l]
+
+\column{2.5in}
+\begin{itemize}
+\item Lead concentration ($\mu g/g$ dry weight) in Galicia, Spain
+\item Samples in 1997 are concentrated to the north, but samples in 2000 are on lattice
+\item How to tell if data is sampled preferentially (and at what level)?
+\item If so, how does preferential sampling effect `naive' inference?
+\item How can we effectively take preferential sampling into account?
+\end{itemize}
+
+\column{2.5in}
+\begin{figure}
+\centering
+\image{width=2.5in}{sampling_locations.pdf}
+\end{figure}
+
+\end{columns}
+
+\end{frame}
+
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Preferential Sampling}
+$S = \{S(x) : x \in \mathbb{R}^2\}$: spatially continuous stochastic process \\
+$X = (x_1, ..., x_n)$: set of sample locations
+~\\~\\
+\emph{Preferential} sampling refers to when $\pi(S, X) \neq \pi(X) \pi(S)$ ($S$ is not independent of $X$).
+~\\~\\
+Note that non-preferential sampling does not necessitate uniform sampling.  Sample locations could still be clustered.
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Scientific Context}
+
+\begin{itemize}
+\item \emph{Covariograms} defined the spatial structure of the covariance in $S$.  The traditional estimator is:
+$$ \wh{C}(\mbf{h}) = \frac{1}{| N(\mbf{h})|} \sum_{N(\mbf{h})} (S(x_i) - \bbar{S})(S(x_j) - \bbar{S}) $$
+where $x_i - x_j \approx \mbf{h}$ (under isotropic model, $|x_i - x_j| \approx h$)
+\item \citealt{isaaks1988} and \citealt{srivastava1989} propose an alternative non-ergodic estimator:
+$$ \wh{C}_{ne}(\mbf{h}) = \frac{1}{| N(\mbf{h})|} \sum_{N(\mbf{h})} (S(x_i) - \bbar{S}(\mbf{h}_i))(S(x_j) - \bbar{S}(\mbf{h}_j)) $$
+where $\bbar{S}(\mbf{h}_i)$ is the sample mean of $S$ at all the points $x_i \in \mbf{h}_i$
+\begin{itemize}
+\item They claim this works better under preferential sampling
+\end{itemize}
+\item \citealt{curriero2002} shows this is ``equivalent'' yet ``worse'' than the traditional estimator under isotropy
+\end{itemize}
+
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Scientific Context}
+
+\begin{itemize}
+\item \citealt{schlather2004} proposes tests for prefential sampling assuming stationarity
+\begin{itemize}
+\item Assumption of stationarity may affect legitimacy of results
+\end{itemize}
+\end{itemize}
+
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Model for Preferential Sampling}
+
+Three assumptions for model:
+\begin{enumerate}
+\item $S$ is a stationary, mean zero Gaussian process
+\item Conditional on $S$, $X$ is an inhomogeneous Poisson process wtih intensity
+$$\lambda(x) = \exp{\alpha + \beta S(x)}$$
+\item $Y_i \vert S, X \iid \Norm{\mu + S(x_i), \tau^2}$
+\end{enumerate}
+~\\
+1 + 2 $\Rightarrow$ $X$ is a log Gaussian Cox process
+
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Log-Gaussian Cox Processes}
+
+\begin{columns}[l]
+
+\column{.05in}
+\column{2.45in}
+A \emph{Cox process} is a stochastic point process satisfying:
+\begin{itemize}
+\item $\Lambda(x)$ is a random rate process
+\item Conditioned on $\Lambda(x) = \lambda(x)$, a Cox process is an inhomogeneous Poisson process with rate $\lambda(x)$
+\end{itemize}
+~\\
+A \emph{log Gaussian} Cox process also satisfies $\Lambda(x) = \exp{Z(x)}$, where $Z(x)$ is a Gaussian random field.
+
+\column{2.45in}
+
+\begin{figure}
+\centering
+\image{width=2.45in}{cox_proc_fig.pdf}
+\caption{From \citealt{diggle2010}.  An example of a log Gaussian Cox process on unit square where $\beta=2$, $\alpha=1$, and $S$ has Mat\'{e}rn covariance.}
+\end{figure}
+
+\column{.05in}
+
+\end{columns}
+
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Spatial Covariance Model}
+
+The Mat\'{e}rn correlation model, as a function of distance, $u$, is:
+$$ \rho(u; \phi, \kappa) = \frac{1}{2^{\kappa - 1} \Gamma(\kappa)} (u/\phi)^\kappa K_\kappa(u/\phi) $$
+$\kappa$: shape parameter \\
+$\phi$: scale parameter \\
+$K_\kappa$: modified Bessel function of the second kind, of order $\kappa$
+~\\~\\
+\begin{itemize}
+\item $\rho$ is called the \emph{correlogram} when viewed as a function of distance
+\item The covariance as a function of distance is the \emph{covariogram}
+\item The variance as a function of distance is the \emph{variogram}
+\end{itemize}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Testing Affect of Sample Designs}
+\begin{figure}
+\centering
+\image{width=4.5in}{sim_design.pdf}
+\caption{From \citealt{diggle2010}}
+\end{figure}
+Variogram estimation tested under 500 simulations from three sampling designs:
+\begin{enumerate}
+\item[a] Uniform
+\item[b] Preferential ($\beta=2$)
+\item[c] Clustered
+\end{enumerate}
+
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Fitting the Model}
+Make gridded approximation of $S = \{S_0, S_1\}$
+\begin{itemize}
+\item $S_0$ are data
+\item $S_1$ are the values at other grid points
+\end{itemize}
+\bal
+L(\vt) &= \int \pi(Y \vert X, S) \pi(X \vert S) \pi(S) \ dS \\
+&= \hdots \\
+%&= \int \pi(X \vert S) \pi(Y \vert X, S) \frac{\pi(S \vert Y)}{\pi(S \vert Y)} \pi(S) \ dS \\
+%&= \int \pi(X \vert S) \pi(Y \vert S_0) \frac{\pi(S \vert Y)}{\pi(S_0 \vert Y) \pi(S_1 \vert S_0, Y)} \pi(S) \ dS \\
+%&= \int \pi(X \vert S) \pi(Y \vert S_0) \frac{\pi(S \vert Y)}{\pi(S_0 \vert Y) \pi(S_1 \vert S_0)} \pi(S_0, S_1) \ dS \\
+%&= \int \pi(X \vert S) \pi(Y \vert S_0) \frac{\pi(S \vert Y)}{\pi(S_0 \vert Y)} \pi(S_0) \ dS \\
+&= E_{S \vert Y} \brack{\pi(X \vert S) \frac{\pi(Y \vert S_0)}{\pi(S_0 \vert Y)} \pi(S_0)} \\
+&\approx m^{-1} \sum_{j=1}^m \pi(X \vert S_j) \frac{\pi(Y \vert S_{0j})}{\pi(S_{0j} \vert Y)} \pi(S_{0j})
+\eal
+where $S_j$ is the $j$th conditional simulation of $S$ conditioned on $Y$.
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Goodness of Fit}
+\emph{Reduced second moment measure} (or $K$-function) for defined model is given by:
+$$ K(s) = \pi s^2 + 2 \pi \int_0^s (\exp{\beta^2 \sigma^2 \rho(u; \kappa, \phi)} - 1) u \ du $$
+\begin{itemize}
+\item $s$ represents the maximum distance apart points can be
+\item $\rho(u ; \phi) \defn \corr{S(x), S(x') \vert \phi, \kappa, |x - x'| = u}$
+\item $\phi$: Mat\'{e}rn scale parameter
+\item $\kappa$: Mat\'{e}rn smoothness parameter
+\end{itemize}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Goodness of Fit}
+Define test statistic:
+$$ T = \int_0^{0.25} \frac{(\wh{K}(s) - K(s))^2}{\nu(s)} \ ds $$
+\begin{itemize}
+\item $\wh{K}(s)$: empirical $K$-function
+\item $\nu(s) \defn \var{\wh{K}}$
+\end{itemize}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Conclusions}
+\begin{itemize}
+\item Taking into account preferential sampling is important!
+\begin{itemize}
+\item In the simulations (albiet with high $\beta$), variograms estimated naively were estimated poorly
+\end{itemize}
+\item Uniform sampling performed best, then clustered, then preferential
+\item Proposed class of models is flexible and values for $\beta$ can be tested directly with likelihood ratio test
+\end{itemize}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+
+%----------------------------------------------------------------------------------------------------------------------------------------
+%  Section 6
+%----------------------------------------------------------------------------------------------------------------------------------------
+\section{References}
+\begin{frame}
+\tiny
+\frametitle{References}
+\bibliographystyle{te}
+\bibliography{../prelim}
+\end{frame}
+%---------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+\end{document}
+
+
+
+
+
+
+
+
