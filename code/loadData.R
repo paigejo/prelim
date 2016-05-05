@@ -234,3 +234,7 @@ data00 = c(1.900000, 2.700000, 4.700000, 2.800000, 2.600000, 4.600000, 3.100000,
            1.200000, 1.600000, 1.700000, 4.500000)
 
 lead00 = as.geodata(cbind(coords00, data00))
+
+#remove the 2 outliers in 2000 data, replace with mean of rest of data
+outI = c(32, 73)
+data00[outI] = mean(data00[-outI])

@@ -1,3 +1,6 @@
+library(RandomFields)
+library(spatstat)
+
 # genMaternGP generates a Matern covariance GP on the unit square
 # with the parameters given the in text
 genMaternGP = function(nsim=1, nx=128, ny=128) {
@@ -28,7 +31,7 @@ genMaternGP = function(nsim=1, nx=128, ny=128) {
 
 # get a uniformly sampled point process with expected number of points
 # equal to nPts
-genUnifPP = function(numSamples=1, nPts = 100) {
+genUnifPP = function(numSamples=1) {
   #mu = 4, sigma^2=1.5, phi=0.15, kappa=1, beta=2, tau^2 = 0
   
   mu = 4
@@ -38,9 +41,11 @@ genUnifPP = function(numSamples=1, nPts = 100) {
   beta = 0
   tausq = 0
   
+  overallMu = exp(mu + sigmasq/2)
+  
   sims = list()
   for(i in 1:numSamples) {
-    sims[[i]] = rpoispp(lambda=100)
+    sims[[i]] = rpoispp(lambda=overallMu)
   }
   
   return(sims)
@@ -48,7 +53,7 @@ genUnifPP = function(numSamples=1, nPts = 100) {
 
 # get a a clustered point process using log-Gaussian Cox Process
 # model
-genPreferentialPP = function(numSamples=1, nPts = 100) {
+genPreferentialPP = function(numSamples=1) {
   #mu = 4, sigma^2=1.5, phi=0.15, kappa=1, beta=2, tau^2 = 0
   # exp(mu + sigma^2/2)
   mu = 4
@@ -58,7 +63,7 @@ genPreferentialPP = function(numSamples=1, nPts = 100) {
   beta = 2
   tausq = 0
   varEst = beta^2*sigmasq
-  overallMuEst = log(nPts) - varEst/2
+  #overallMuEst = log(nPts) - varEst/2
   
   #now generate point processes clustered based on these GPs
   #make sure to save random rate Lambda and the GPs themselves
@@ -66,7 +71,7 @@ genPreferentialPP = function(numSamples=1, nPts = 100) {
   Lambdas = list()
   GPs = list()
   for(i in 1:numSamples) {
-    sim = rLGCP("matern", overallMuEst, var=varEst, scale=phi, 
+    sim = rLGCP("matern", mu, var=varEst, scale=phi, 
                       nu=kappa, nsim=1, drop=TRUE, saveLambda=TRUE)
     sims[[i]] = sim
     Lambdas[[i]] = attr(sim, "Lambda")
@@ -78,11 +83,11 @@ genPreferentialPP = function(numSamples=1, nPts = 100) {
 
 #generate clustered point processes (preferentially sampled from 
 # a different GP)
-genClusterPP = function(numSamples=1, nPts = 100) {
+genClusterPP = function(numSamples=1) {
   # generate pereferential PPs, but associate with different
   # GPs to make clustered, non-preferential sampling
   
-  preferentialPPs = genPreferentialPP(numSamples, nPts)
+  preferentialPPs = genPreferentialPP(numSamples)
   newGPs = genMaternGP(nsim=numSamples)
   preferentialPPs$GPs = newGPs
   preferentialPPs$Lambda = NULL
