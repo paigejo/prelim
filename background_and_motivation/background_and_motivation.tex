@@ -20,6 +20,7 @@
   }
 \end{center}
 
+\vmcomment{I would try to keep introduction as free from formulae as possible. Try to explain math in words.}
 As discussed in \citet{diggle2010}, geostatistics considers stochastic processes varying in space.  In some applications the process, $S$, might be measured at a set of discrete locations, say $X = \set{x_1, x_2, ..., x_n}$ (often a subset of $\mathbb{R}^2$, as in \citet{diggle2010}).  In others, $S$ might be measured as a set of averages or a quantile function over different regions.  Here, we consider the following model for measured observations, $Y_i \in \mathbb{R}$, of the spatial process:
 \begin{equation}
 Y_i = \mu + S(x_i) + Z_i,
@@ -27,7 +28,7 @@ Y_i = \mu + S(x_i) + Z_i,
 \end{equation}
 where $i \in \set{1, ..., n}$, $\mu$ is the mean of the measured process, and the $Z_i \iid \Norm{0, \tau^2}$ can be interpreted as independent fine-scale measurement errors.  Note that in the above model we assume $E\brack{S} = 0$, since the mean of right-hand side can be changed with the $\mu$ parameter.  We further assume $S(X) = \set{S(x_1, ..., S(x_n)}$ is multivariate normal with $\cov{S(x), S(x')}$ as a function of $|x - x'|$.  Note that assuming a constant mean is not restrictive, since we can model $\mu$ as a function in space using a generalized linear regression framework, letting $E[Y_i] = \mu_i = \v{X}_i' \v{\beta}$, where errors are correlated due to spatial correlations in $S$.
 \\\\
-Correlations in $S$ are modelled under the assumption of stationarity and isotropy in the case of \citet{diggle2010}.  Stationarity in combination with isotropy means that, in addition to the form of the covariance in values of $S$ being a function of distance alone, the variance of the spatial process becomes
+Correlations in $S$ are modeled under the assumption of stationarity and isotropy \vmcomment{stationary and isotropy are not defined} in the case of \citet{diggle2010}.  Stationarity in combination with isotropy means that, in addition to the form of the covariance in values of $S$ being a function of distance alone, the variance of the spatial process becomes
 \begin{equation}
 \var{S(x) - S(x')} = \sigma^2 - \sigma^2 \rho(|x - x'| \ \vert \v{\theta}).
 \label{variogram}
@@ -35,11 +36,12 @@ Correlations in $S$ are modelled under the assumption of stationarity and isotro
 The positive definite function $\rho(\cdot  \vert \v{\theta})$ represents a correlation depending on distance conditional on the parameters $\v{\theta}$.  The variance in Eq. (\ref{variogram}) is called a variogram function.  \citet{diggle2010} uses the Mat\'{e}rn correlation function,
 $$ \rho(u \ \vert \ \phi, \kappa) = \frac{1}{2^{\kappa - 1} \Gamma(\kappa)} (u/\phi)^{\kappa} K_\kappa(u/\phi), $$
 where $\kappa > 0$ is a smoothness parameter, $\phi > 0$ is the spatial scale parameter, and $K_\kappa(\cdot)$ is the modified Bessel function of the second kind of order $\kappa$.  As noted in \citet{diggle2010}, the Mat\'{e}rn class of covariance functions is very flexible, containing exponential correlation as a special case when $\kappa = 0.5$, and is commonly used in geostatistics.  One difficulty when using a Mat\'{e}rn covariance model is that $\phi$ and $\kappa$ are sometimes difficult to estimate jointly, especially $\kappa$.\citep{diggle2010}.
-\\\\
+\par
 There are several advantages to modeling the variogram in a spatial model.  It provides a simple interpretation relating correlations and variance in $S$ over space as a function of distance.  In addition, it is easy to estimate assuming stationarity and under certain distributional assumptions of the sample locations.  A point cloud method of estimating empirical variogram works by plotting the distance between observations $y_i$ and $y_j$ versus $(y_i - y_j)^2/2$, which is the method of moments estimator for the variance based on two observations assuming the $y_i$ have zero expectation \citep{diggle2010}.  If the $y_i$ are not mean zero, we can simply subtract off $\mu$ from Eq. (\ref{model}).  Additionally, we could partition the possible distances between observation locations into sufficiently fine bins, and estimate the variance between differences of observation values when the corresponding distances are in any given bin.  Of course, if the bins are too fine, then our variogram estimates within each distance bin would be poor.  More advanced methods for estimating variograms are given in \citet[section 2.2]{chiles1999}, \citet{cressie1985}, and \citet[section 2.4]{cressie1991}.
-\\\\
+\par
 In classical geostatistical analysis, it is assumed that the observation locations are independent of the measured spatial field \citep{diggle2010}.  However, in the case of certain datasets, this might not be the case.  Consider a tornado chaser trying to measure the wind speed of the tornado.  It would be a terrible idea to try to infer average wind speeds in a region from the tornado chaser's wind speed data.  This is because the data they collect is much more likely to be in locations and times where the wind speeds are abnormally high.  This is what \citet{diggle2010} refers to as \emph{preferential sampling}.
-\\\\
+\par
+\vmcomment{I would beef up literature review with connections to other fields, where something like preferential sampling comes up. For example, informative doctor visit times in medical statistics. The discussion of the paper may provide more connections.}
 In order to account for preferential sampling, \citet{isaaks1988} and \citet{srivastava1989} proposed a non-ergodic variogram estimator as an alternative to classical estimators that they claimed was more robust to nonstationary and preferential data.  However, \citet{curriero2002} found that the non-ergodic estimators `possess no clear advantage' over the traditional estimators, and in fact performed worse in the cases they studied.  \citet{schlather2004} note that if $S$ is stationary, then $M_k(h) \defn E[S(x)^k \vert x, x+h \in X]$ is constant if the sampling process is non-preferential, since the expectation does not depend on $x+h$.  However the expectations might not be constant under preferential sampling.  \citet{schlather2004} then defines tests for preferentiality (assuming that $S$ is stationary) based on $M_1(h)$ and $M_2(h)$ using simulations under models assuming non-preferentiality.
 \\\\
 In addition to analyzing variations in observation \emph{values} over space, it is common to study the patterns in the observation \emph{locations}, as in \citet{diggle2010}.  Point processes are stochastic processes used to model random distributions of countably many points throughout a spatial domain (here we assume a bounded subset of $\mathbb{R}^2$) \citep{handbook}.  Common models for point processes include homogeneous or inhomogeneous Poisson processes, Cox processes, and Markov point processes \citep{handbook}.  A homogeneous Poisson process with rate (intensity) $\lambda > 0$ is a point process such that for bounded Borel sets $B, B' \subset \mathbb{R}^2$ the following conditions are satisfied:
@@ -60,14 +62,14 @@ In the case of
 \label{lGCP}
 \end{equation}
 where $S(x)$ is the stochastic Gaussian process defined in Eq. (\ref{model}), the resulting point process is known as a log-Gaussian Cox process (lGCP) \citep{diggle2010}.
-\\\\
+\par
 Just as the variogram can measure the level of correlation in observation values through space, the $K$-function can be helpful when analyzing the level of correlation in observation locations.  The $K$-function is defined as $K(s) = \lambda^{-1} E[N_0(s)]$ for homogeneous point processes, where $E[N_0(s)]$ denotes the expected number of points with distance $s$ from another point.  Under complete spatial randomness (CSR) (\emph{i.e.} if it is consistent with a homogeneous Poisson process model) the $K$ function has the form $K(s) = \pi s^2$, but when the empirical $K$ function is above or below $\pi s^2$, the data is indicative of clustering or repulsion respectively.  The $K$ function can be used in Monte Carlo goodness of fit tests for point process models \citep[Section 18.3]{handbook}.  It can also be used to test whether the data follows complete spatial randomness (CSR) or whether there is clustering or repulsion among the observation locations.  The $K$ function for lGCPs has the form:
 \begin{equation}
 K(s) = \pi s^2 + 2 \pi \int_0^s \gamma(u) u \ du
 \label{Kfun}
 \end{equation}
 where $\gamma(u) = \exp{\beta^2 \sigma^2 \rho(u ; \phi, \kappa)} - 1$ is the covariance of $\Lambda$, $\cov{\Lambda(x), \Lambda(x + u)}$ under the parameterization of Eq. (\ref{lGCP}).
-\\\\
+\par
 The main contribution of \citet{diggle2010} is the authors' use of a lGCP model for sample locations in conjunction with the spatial process model in Eq \ref{model} for data being measured.  They give a relatively simple parameter fitting procedure by maximizing a tractable Monte Carlo likelihood and give examples of the dangers that could occur under a `naive' geostatistical analysis that assumed non-preferentiality.  Further, they give new tests for preferentiality and compute the results of a Monte Carlo goodness of fit based on the $K$-function under their proposed model.
 
 %\bibliographystyle{../te}
