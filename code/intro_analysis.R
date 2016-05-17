@@ -1,8 +1,8 @@
 #set working directory
 #setwd("~/Google Drive/UW/coursework/2016_SPRING/prelim/code/")
-setwd("~/git/prelim/code")
 
 # read in data
+setwd("~/git/prelim/code")
 source("loadData.R")
 source("support_funs.R")
 
@@ -19,11 +19,9 @@ quilt.plot(coords00, data00, main=TeX("Lead Concentration ($\\mu g/g$), 2000"),
            xlab="Easting (100 km)", ylab="Northing (100 km)", asp=1)
 dev.off()
 
-# find outliers in data: points 32, 73
+##### find outliers in data: points 32, 73.  Replace with mean of rest of data
 text(coords00[,1], coords00[,2], 1:nrow(coords00))
 outs = c(32, 73)
-
-#replace outlier values with mean of the rest of the data
 data00[outs] = mean(data00[-outs])
 
 #plot resulting field
@@ -101,114 +99,3 @@ out = rLGCP("exp", muMLE, var=betaMLE^2*varianceMLE, scale=scaleMLE,
 plot(out)
 #plot(attr(out, "Lambda"))
 #points(out)
-
-
-##### K function estimation
-# lgcp.estK, use Kest for estimating Ripley's reduced second moment K function 
-#from given point pattern
-
-#get empirical K function from 1997 lead data
-#NOTE: Ripley isotropic correction is used, since it is claimed to be best for 
-#polygonal boundary windows in Kest documentation
-xs = coords97[,1]
-ys = coords97[,2]
-zs = data97
-ppp97 = ppp(xs, ys, marks=zs, window=win)
-KEmp97Test = Kest(ppp97, correction="isotropic") #as in the paper, only go out 25km
-plot(KEmp97Test)
-env97Test = envelope(ppp97, correction="isotropic", fix.n=TRUE)
-plot(env97Test)
-
-KEmp97 = Kest(ppp97, rmax=.25) #as in the paper, only go out 25km
-plot(KEmp97)
-env97 = envelope(ppp97, rmax=.25, fix.n=TRUE)
-plot(env97)
-
-rs = seq(.001, .25, length=100)
-Krs = sapply(rs, K)
-lines(rs, K(rs), col="green")
-
-# since 2000 data is in lattice, K function looks terrible
-# xs = coords00[,1]
-# ys = coords00[,2]
-# zs = data00
-# ppp00 = ppp(xs, ys, marks=zs, window=win)
-# KEmp00 = Kest(ppp00, rmax=.25) #as in the paper, only go out 25km
-# plot(KEmp00)
-# env00 = envelope(ppp00, rmax=.25)
-# plot(env00)
-
-
-# NOTE: Kinhom is like Kest but for anisotropic data.  Why wasn't this used in paper?
-# maybe the differences between estimate and predicted K func in paper indicated 
-# clustering
-
-#in order to simulate log gaussian cox process, we increase alpha parameter from
-#paper, which is equivalent to increasing mu in rLGCP function, so as to generate 
-#a large number of points.  We then randomly thin until we reach correct number of 
-#points.  A paper (http://people.math.aau.dk/~jm/teheran.pdf) notes on page 3 
-#that this process results in a LGCP with same beta, just different alpha.
-
-simExp = expression(simFun97())
-testEnv97 = envelope(ppp97, fun=Kinhom, rmax=.25, simulate=simExp, clamp=FALSE, 
-                     savefuns=TRUE, savepatterns = TRUE)
-legendargs = list(x="topleft", 
-                  legend=expression(italic(hat(K)[obs](r)), italic(bar(K)[sim](r)), 
-                                    italic(K[theo](r))), 
-                  lty=c(1, 2, 1), col=c("black", "red", "blue"), y.intersp=1.25)
-# legendargs = list(y.intersp=.3)
-pdf("envelopeInhom.pdf", width=7, height=5)
-plot(testEnv97, legendargs=legendargs, xlim=c(0, .25), ylim=c(0, .3), 
-     main=expression("Estimated, simulated, and theoretical" ~ italic(K) ~ 
-                       "functions (not assuming homogeneity)"))
-rs = seq(.001, .25, length=100)
-Krs = sapply(rs, K)
-lines(rs, Krs, col="blue")
-dev.off()
-
-simKs97 = attr(testEnv97, "simfuns")
-class(simKs97) = "data.frame"
-r = simKs97[,1]
-simKs97 = simKs97[,-1]
-simKSD97 = apply(test, 1, sd)
-Krs = sapply(r, K)
-numSDs = qnorm(.975) #for 95% confidence interval
-uncertainties = simKSD97*numSDs
-minRange = min(Krs - uncertainties)
-minRange = min(c(minRange, testEnv97$obs))
-maxRange = max(Krs + uncertainties)
-maxRange = max(c(maxRange, testEnv97$obs))
-polyX = c(r, rev(r), r[1])
-polyY = c(Krs + uncertainties, rev(Krs - uncertainties), Krs[1] + uncertainties[1])
-plot(r, Krs, type="n", lwd=2, col="blue", 
-     main=expression("Observed and theoretical" ~ italic(K) ~ 
-                       "functions"), 
-     xlim=c(0, .25), ylim=c(0, .4), xlab=expression(italic(r)), 
-     ylab=expression(italic(K(r))))
-polygon(polyX, polyY, col=rgb(.4,.4,.4,.5), border=rgb(.5,.5,.5,.5))
-lines(r, Krs, lwd=2, col=rgb(.4,.4,.4), lty=2)
-# plot(r, Krs, type="l", ylim=c(minRange, maxRange), lwd=2, col="blue", 
-#      main=expression("Observed and theoretical" ~ italic(K) ~ 
-#                      "functions"))
-# lines(r, Krs - uncertainties, lty=2, col=rgb(.4,.4,.4))
-# lines(r, Krs + uncertainties, lty=2, col=rgb(.4,.4,.4))
-lines(r, testEnv97$obs, lwd=2)
-legend(x="topleft", lty=c(1, 2), col=c("black", rgb(.4,.4,.4)), y.intersp=1, 
-       legend=expression(italic(hat(K)[obs](r)), italic(K[theo](r))), 
-       lwd=2)
-
-#plot of just theoretical K function:
-r = seq(0, .25, length=100)
-Krs = K(r)
-
-pdf("Ktheo.pdf", width=7, height=5)
-plot(r, Krs, main="Theoretical K function using MLEs", xlab=expression(italic(r)), 
-     ylab=expression(italic(K(r))), type="l", lwd=2, col="blue")
-dev.off()
-
-#questions:
-#1) K function: what is it?
-#2) Why is my K function not the same as the one in the paper?
-#3) How is the test statistic given on page 205 turned into a p-value?
-#4) How does one typically fit a quadratic to a log-likelihood surface?
-#5) Can I just take an independent thinning of a simulated LGCP?

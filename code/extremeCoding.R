@@ -43,8 +43,18 @@
 #    is a draw from S|Y
 #    NOTE: don't do any of this, try to use RPcirculant with RMmatern
 
-
-
+# List of things done in paper:
+# ~ empirical cdfs for log-transformed 1997 and 2000 data
+# ~ estimates of variogram bias and variance depending on sampling scheme
+# + K-function goodness of fit
+# - fit standard geostatistical model using MC lik-max (separately for each year)
+# ~ make standard geostatistical variograms for each year
+# - fit preferential model using MC lik-max (separately for each year and also joint)
+# - generalized lik-ratio test for joint model in preferential model
+# - fit correlation matrix between parameter estimates for joint preferential model
+# - generate predictions and differences in 1997 under preferential (joint) and standard model
+# - estimate proportion of area where 1997 concentrations > 3, 5, and 7 for pref and std models
+# - plotted 5%, 50%, and 95% spatial distributions for 1997 pref and std models
 
 
 
