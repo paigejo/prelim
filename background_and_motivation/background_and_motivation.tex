@@ -10,6 +10,12 @@
 
 \bibliographystyle{plainnat}
 
+\usepackage{color}
+\usepackage{ulem}
+\newcommand{\vmdel}[1]{\sout{#1}}
+\newcommand{\vmadd}[1]{\textbf{\color{red}{#1}}}
+\newcommand{\vmcomment}[1]{({\color{blue}{VM's comment:}} \textbf{\color{blue}{#1}})}
+
 \begin{document}
 %%\maketitle
 
@@ -43,7 +49,7 @@ In classical geostatistical analysis, it is assumed that the observation locatio
 \par
 \vmcomment{I would beef up literature review with connections to other fields, where something like preferential sampling comes up. For example, informative doctor visit times in medical statistics. The discussion of the paper may provide more connections.}
 In order to account for preferential sampling, \citet{isaaks1988} and \citet{srivastava1989} proposed a non-ergodic variogram estimator as an alternative to classical estimators that they claimed was more robust to nonstationary and preferential data.  However, \citet{curriero2002} found that the non-ergodic estimators `possess no clear advantage' over the traditional estimators, and in fact performed worse in the cases they studied.  \citet{schlather2004} note that if $S$ is stationary, then $M_k(h) \defn E[S(x)^k \vert x, x+h \in X]$ is constant if the sampling process is non-preferential, since the expectation does not depend on $x+h$.  However the expectations might not be constant under preferential sampling.  \citet{schlather2004} then defines tests for preferentiality (assuming that $S$ is stationary) based on $M_1(h)$ and $M_2(h)$ using simulations under models assuming non-preferentiality.
-\\\\
+\par
 In addition to analyzing variations in observation \emph{values} over space, it is common to study the patterns in the observation \emph{locations}, as in \citet{diggle2010}.  Point processes are stochastic processes used to model random distributions of countably many points throughout a spatial domain (here we assume a bounded subset of $\mathbb{R}^2$) \citep{handbook}.  Common models for point processes include homogeneous or inhomogeneous Poisson processes, Cox processes, and Markov point processes \citep{handbook}.  A homogeneous Poisson process with rate (intensity) $\lambda > 0$ is a point process such that for bounded Borel sets $B, B' \subset \mathbb{R}^2$ the following conditions are satisfied:
 \begin{enumerate}
 \item the number of points in a bounded Borel set, $B$, is a random variable given by $N(B)~\sim~\Pois{\lambda \mu(B)} $, where $\mu$ is the Lebesgue measure, and
