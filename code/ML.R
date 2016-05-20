@@ -208,7 +208,7 @@ likRatioTest = function(loglik97, loglik00, loglikJoint) {
 MLPref = function(coords97, log97, coords00, log00, 
                   initParams = c(mu97MLE, mu00MLE, log(sqrt(sillMLE)), 
                                  log(scaleMLE), log(sqrt(nuggetMLE)), beta=betaMLE), 
-                  res=60, nMCSamples = 10000) {
+                  res=60, nMCSamples = 10000, doPar=FALSE, nProc=4) {
   
   ##### decide on initial parameters if they aren't provided.  Note that the year 
   ##### 2000 model doesn't require a beta parameter since not preferential
@@ -331,7 +331,7 @@ MLPref = function(coords97, log97, coords00, log00,
   getLik97 = function(params) {
     # Evaluate log likelihood
     loglik = likPreferentialMC(params, latticeCoords, log97, distMat97Lattice, C, Ct, inds, 
-                             res=res, nsims=nMCSamples)
+                             res=res, nsims=nMCSamples, doPar, nProc)
     
     # update summary table
     summTable97 <<- rbind(summTable97, c(params, loglik))
@@ -353,7 +353,8 @@ MLPref = function(coords97, log97, coords00, log00,
     loglik = loglik97 + loglik00
     
     # update summary table
-    summTableJoint <<- rbind(summTableJoint, c(params, loglik97, loglik00, loglik))
+    summTableJoint <<- rbind(summTableJoint, c(params, loglik97, loglik00, loglik), 
+                             doPar=doPar, nProc=nProc)
     
     if(!is.finite(loglik))
       return(log(10^-150))
@@ -412,7 +413,7 @@ MLPref = function(coords97, log97, coords00, log00,
 # based on Eq. (9) and (10) from diggle (2010).  The input distMat should be for the
 # gridCoords
 likPreferentialMC = function(params, gridCoords, dat, distMat, C, Ct, inds, 
-                           res=60, nsims=10000) {
+                           res=60, nsims=10000, doPar=FALSE, nProc=4) {
   # n and N as defined in paper: n is number of observations, N is number of pts in grid
   n = length(dat)
   N = length(gridCoords)
@@ -525,7 +526,17 @@ likPreferentialMC = function(params, gridCoords, dat, distMat, C, Ct, inds,
   
   #now we can compute all log-likelihoods using apply
   nPairs = ceil(nsims/2)
-  allLogLiks = c(sapply(1:nPairs, getLikPair))
+  
+  if(!doPar) {
+    allLogLiks = c(sapply(1:nPairs, getLikPair))
+  }
+  else {
+    clust = makeCluster(nProc)
+    clusterEvalQ(clust, setwd("~/git/prelim/code/"))
+    clusterEvalQ(clust, source("loadAll.R"))
+    allLogLiks = c(parSapply(clust, 1:nPairs, getLikPair))
+    stopCluster(clust)
+  }
   
   # final MC likelihood estimate is average of likelihoods, but return log-likelihood:
   return(log(mean(exp(allLogLiks))))
