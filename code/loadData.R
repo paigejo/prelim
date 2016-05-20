@@ -74,8 +74,6 @@ loadRawData = function() {
                3.989, 8.869, 8.691, 7.836, 3.348, 3.918, 1.995, 8.156, 8.726, 3.775, 2.707, 5.058,
                1.816, 3.384, 3.847)
   
-  lead97 <<- as.geodata(cbind(coords97, data97))
-  
   coords00 <<- matrix(c(
     605370, 4840339,
     619851, 4840170,
@@ -229,8 +227,6 @@ loadRawData = function() {
                2.800000, 1.700000, 1.400000, 1.300000, 1.700000, 1.700000, 1.500000, 2.700000,
                2.900000, 2.900000, 0.800000, 1.400000, 2.100000, 2.300000, 1.600000, 2.900000,
                1.200000, 1.600000, 1.700000, 4.500000)
-  
-  lead00 <<- as.geodata(cbind(coords00, data00))
   
   ##### make hull, the data domain, and calculate domain area and average intensity
   allCoords <<- rbind(coords97, coords00)
