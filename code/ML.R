@@ -237,6 +237,8 @@ MLPref = function(coords97, log97, coords00, log00,
   # get lattice coordinates, the coordinates for the grid approximation to the GP
   win.poly = matrix(unlist(win$bdry[[1]]), ncol=2)
   latticeCoords = make.surface.grid(list(x=xs, y=ys))
+  
+  # only take points within domain
   latticeCoords = latticeCoords[in.poly(latticeCoords, win.poly),]
   
   # round true coordinates to the lattice coordinates
@@ -251,14 +253,22 @@ MLPref = function(coords97, log97, coords00, log00,
   roundCoords97 = cbind(roundX, roundY)
   
   # find indices of lattice coords corresponding to data coords
-  findIndex = function(coords, len=res) {
-    #convert coords to x and y grid indices
-    coords = coords*(len-1) + 1
-    xInd = coords[1]
-    yInd = coords[2]
-    return((yInd-1)*len + xInd)
+#   findIndex = function(coords, len=res) {
+#     #convert coords to x and y grid indices
+#     coords = coords*(len-1) + 1
+#     xInd = coords[1]
+#     yInd = coords[2]
+#     return((yInd-1)*len + xInd)
+#   }
+#   inds = apply(roundCoords97, 1, findIndex, len=length(xrange))
+  findIndex = function(coordPair) {
+    coords.eq = function(latticePair) {
+      return(all(coordPair == latticePair))
+    }
+    eq = apply(latticeCoords, 1, coords.eq)
+    return(which(eq))
   }
-  inds = apply(roundCoords97, 1, findIndex, len=length(xrange))
+  inds = unlist(apply(roundCoords97, 1, findIndex))
   
   #generate C matrix giving indices of X in X* (indices of rounded 
   #observation locations in grid).  Also make C transpose
@@ -324,7 +334,7 @@ MLPref = function(coords97, log97, coords00, log00,
                              res=res, nsims=nMCSamples)
     
     # update summary table
-    summTable97 <<- rbind(summTable00, c(params, loglik))
+    summTable97 <<- rbind(summTable97, c(params, loglik))
     
     if(!is.finite(loglik))
       return(log(10^-150))
@@ -338,8 +348,8 @@ MLPref = function(coords97, log97, coords00, log00,
   
   getLikJoint = function(params) {
     # Evaluate log likelihood
-    loglik97 = getLik97(params)
-    loglik00 = getLik00(params)
+    loglik97 = getLik97(params[-2])
+    loglik00 = getLik00(params[-c(1, 6)])
     loglik = loglik97 + loglik00
     
     # update summary table
@@ -409,23 +419,32 @@ likPreferentialMC = function(params, gridCoords, dat, distMat, C, Ct, inds,
   
   #get parameters:
   mu97 = params[1]
-  mu00 = params[2]
-  sigma = exp(params[3])
-  phi = exp(params[4])
-  tau = exp(params[5])
-  beta = params[6] #(note: we don't care about beta until we calculate likelihood of X given S)
+  #mu00 = params[2]
+  sigma = exp(params[2])
+  phi = exp(params[3])
+  tau = exp(params[4])
+  beta = params[5] #(note: we don't care about beta until we calculate likelihood of X given S)
   
   #generate marginal covariance matrix of S, Sigma, for the given parameters
   Sigma = Exp.cov(gridCoords, theta=phi, distMat=distMat)*sigma^2
   
   #Now compute Sigma0, the covariance matrix of Y
-  Sigma0 = as.matrix(C %*% Sigma %*% Ct)
+  #Sigma0 = as.matrix(C %*% Sigma %*% Ct)
+  Sigma0 = Sigma[inds, inds]
   
   # add nugget error to Sigma with fast internal function of fields in C
   invisible(.Call("addToDiagC", Sigma0, as.double(rep(tau^2, nrow(Sigma0))), nrow(Sigma0)))
   
   #Cholesky decomposition of Sigma0 required for likelihood
   Sigma0U = chol(Sigma0)
+  
+  # compute muc, expectation of Sj based on this formula:
+  # Sigma %*% Ct %*% Sigma0^-1 %*% (dat - mu)
+  vec = dat - mu97
+  z = backsolve(Sigma0U, vec, transpose=TRUE)
+  x = cbind(backsolve(Sigma0U, z)) #make sure x is a column vector TODO: MAKE SURE THIS WORKS *********
+  #muc = as.numeric(Sigma %*% Ct %*% x)
+  muc = Sigma[,inds] %*% x
   
   #calculate conditional mean of S given Y (just get sample mean)
   # muc = sigma^2*(dat - mu)/((sigma + tau)*sqrt(sigma^2 + tau^2))
@@ -436,14 +455,16 @@ likPreferentialMC = function(params, gridCoords, dat, distMat, C, Ct, inds,
   # calculate log-likelihood for given simulation, S, under preferential model
   getSimLik = function(S) {
     #simulate S given Y (authors denote this by Sj).  We want:
-    # Sj = S + Sigma %*% Ct %*% Sigms0Inv %*% (dat - mu + Zs - C %*% S)
+    # Sj = S + Sigma %*% Ct %*% Sigma0Inv %*% (dat - mu + Zs - C %*% S)
     # let x = Sigms0Inv %*% (dat - mu + Zs - C %*% S)
     # calculate x using Cholesky decomp of Sigma0
-    Zs = rnorm(n)
-    vec = dat - mu + Zs - C %*% S
-    z = forwardolve(Sigma0U, vec, transpose=TRUE)
+    Zs = rnorm(n)*tau
+    #vec = dat - mu97 + Zs - C %*% S
+    vec = dat - mu97 + Zs - S[inds]
+    z = backsolve(Sigma0U, vec, transpose=TRUE)
     x = cbind(backsolve(Sigma0U, z)) #make sure x is a column vector TODO: MAKE SURE THIS WORKS *********
-    Sj = S + Sigma %*% Ct %*% x
+    #Sj = as.numeric(S + Sigma %*% Ct %*% x)
+    Sj = S + Sigma[,inds] %*% x
     S0j = Sj[inds]
     
     # calculate lambda(x) given Y since needed in likelihood
@@ -451,33 +472,42 @@ likPreferentialMC = function(params, gridCoords, dat, distMat, C, Ct, inds,
     
     # calculate likelihood of X given S|Y simulation.  Likelihood given by Eq. (8) 
     # in Diggle (2013). There might be faster ways to calculate it though.
-    dx = xs[2] - xs[1]
-    dy = ys[2] - ys[1]
-    dA = area/N
-    lambda = sum(lambdas)*dA #compare with mean(exp(alpha + beta*Sj)) and N*lambda should be about n
+    lambda = mean(lambdas) # N*lambda*dA should be about n (where dA = Area/N)
     # lik.XGivenS = prod(lambdas[inds])*lambda^(-n)
-    lik.XGivenS = sum(log(lambdas[inds])) - n*log(lambda) #use log-likelihood, not likelihood
+    lik.XGivenS = sum(log(lambdas[inds])) - n*log(Area*lambda) #use log-likelihood, not likelihood
     
     # calculate P(Y | S_{0j}) / P(S_{0j} | Y)
     if(tau == 0) {
       lik.frac = 1
     }
     else {
-      # calculate P(Y | S_{0j})
-      #lik.YGivenS0j = prod(dnorm((S0j - dat)/tau))
-      lik.YGivenS0j = sum(log(dnorm((S0j - dat)/tau))) #use log-likelihood not likelihood
+      # Calculate P(Y | S_{0j}):
+      # Use iid normals since Y's conditionally indep given S
+      lik.YGivenS0j = sum(log(dnorm((S0j + mu97 - dat)/tau))) #use log-likelihood not likelihood
       
-      # get P(S_{0j} | Y) (using bivariate normal conditional density)
-      sigmac = sigma^2 - sigma^2/(sigma^2 + tau^2)
-      # lik.S0jGivenY = prod(dnorm((S0j - muc)/sigmac))
-      lik.S0jGivenY = sum(log(dnorm((S0j - muc)/sigmac))) # use log-likelihood not likelihood
+      # Get P(S_{0j} | Y):
+      # First calculate SigmaS0jGivenY =? tau^2*(I - tau^2*Sigma0Inv)
+      UInv = backsolve(r=Sigma0U, x=diag(nrow=nrow(Sigma0U)))
+      Sigma0Inv = UInv %*% t(UInv)
+      SigmaS0jGivenY = tau^2*(diag(nrow=n) - tau^2*Sigma0Inv)
+      
+      # second calculate expectation of S0j|Y = Sigma %*% t(C) %*% Sigma0Inv %*% cbind(y)
+      # we've already calculated this over all lattice points, just take right values
+      muc0 = muc[inds]
+      
+      # then do Cholesky decomposition and solve using lik.GP
+      SigmaS0jGivenYU = chol(SigmaS0jGivenY)
+      lik.S0jGivenY = likGP(S0j - muc0, SigmaS0jGivenYU)
       
       # lik.frac = lik.YGivenS0j/lik.S0jGivenY
       lik.frac = lik.YGivenS0j - lik.S0jGivenY
     }
     
-    #calcualte GP log-likelihood (log likelihood of S0j) for zero mean data
-    lik.GP = likGP(dat - mu97, Sigma0U)
+    # Calcualte log-likelihood of S0j marginally:
+    # first calculate covariance matrix (same as Sigma0 but without nugget)
+    Sigma0Tilde = Sigma0 - diag(tau^2, nrow=nrow(Sigma0))
+    Sigma0TildeU = chol(Sigma0Tilde)
+    lik.GP = likGP(S0j, Sigma0TildeU)
     
     lik = lik.XGivenS + lik.frac + lik.GP
     return(lik)
@@ -485,9 +515,10 @@ likPreferentialMC = function(params, gridCoords, dat, distMat, C, Ct, inds,
   
   # compute likelihood for simulated GP S and its antithetic pair: 2mu_c - S
   getLikPair = function(i) {
-    S = genS(params, gridCoords, nsim=1) ## TODO: S is list with 1 elmnt
+    S = genS(params, gridCoords) ## TODO: S is list with 1 elmnt
+    S = as.numeric(S$variable1)
     
-    muc = sigma^2*(dat - mu)/((sigma + tau)*sqrt(sigma^2 + tau^2))
+    # muc = sigma^2*(dat - mu)/((sigma + tau)*sqrt(sigma^2 + tau^2))
     SAnti = 2*muc - S
     return(c(getSimLik(S), getSimLik(SAnti)))
   }
@@ -514,42 +545,26 @@ likGP = function(dat, Sigma0U) {
   log.likGP = -(1/2) * rbind(dat) %*% x - sum(log(diag(Sigma0U))) - (n/2)*log(2*pi)
   lik.GP = log.likGP
   
-  # if likelihood is impossible, the Cholesky decomposition was ill-posed
-  if(lik.GP > 1) {
-    return(log(10^-150))
-  }
-  
   return(lik.GP)
 }
 
 #generate S from marginal distribution at data locations
 #params: a vector of elements in order (mu97, mu00, logSill, logPhi, logTau, beta)
-genS = function(params, gridCoords, nsim=1, drop=TRUE) {
+genS = function(params, gridCoords) {
   #get parameters:
   mu97 = params[1]
-  mu00 = params[2]
-  sill = exp(params[3])
-  phi = exp(params[4])
-  tausq = exp(params[5])^2
-  beta = params[6]
-  
-  trueSill = sill*beta^2
-  trueTausq = tausq*beta^2
+  #mu00 = params[2] #this is only called from getLikPair, which is only called from getSimLik
+  sigmasq= exp(params[2])^2
+  phi = exp(params[3])
+  tausq = exp(params[4])^2
+  beta = params[5]
   
   #use RMexp and RMsimulate to perform circulant embedding to quickly simulate S
-  RMobj = RMexp(var=trueSill, scale=phi)
+  RMobj = RMexp(var=sigmasq, scale=phi)
+  sim = RFsimulate(RMobj, x=gridCoords[,1], y=gridCoords[,2])
+  sim$variable1 = sim$variable1 #add mean? No!
   
-  if(nsim != 1 || !drop) {
-    sims = list()
-    for(i in 1:nsim) {
-      sims = c(sims, RFsimulate(RMobj, x=gridCoords[,1], y=gridCoords[,2]))
-    }
-  }
-  else { #if nsim == 1 && drop == TRUE, no need to return list with 1 elmnt
-    sims = RFsimulate(RMobj, x=gridCoords[,1], y=gridCoords[,2])
-  }
-  
-  return(sims)
+  return(sim)
 }
 
 #based on http://onlinelibrary.wiley.com/doi/10.1002/9780470824566.app1/pdf and 

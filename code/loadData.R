@@ -234,10 +234,14 @@ loadRawData = function() {
   
   ##### make hull, the data domain, and calculate domain area and average intensity
   allCoords <<- rbind(coords97, coords00)
-  hull <<- makePredHull(allCoords, alpha=5) #whoops, I guess I may has well have used a convex hull here...
+  hull <- allCoords[chull(allCoords), ]
+  xm <- matrix(c(mean(hull[, 1]), mean(hull[, 2])), nrow = nrow(hull), 
+               ncol = 2, byrow = TRUE)
+  hull <- (hull - xm) * (1 + 1/20) + xm #1/20 is the expansion factor of in.poly function from fields
   
   #reverse order of hull polygon so it's compatible with owin() function
-  hull$hullPoly <<- hull$hullPoly[nrow(hull$hullPoly):1,]
+  hull <- hull[nrow(hull):1,]
+  hull <<- hull
   
   #####make window object by calculating range of data
   range97 <<- apply(coords97, 2, range)
@@ -245,9 +249,9 @@ loadRawData = function() {
   ranges <<- apply(rbind(range97, range00), 2, range)
   rangeX <<- ranges[,1]
   rangeY <<- ranges[,2]
-  win <<- owin(poly=hull$hullPoly)
+  win <<- owin(poly=hull)
   
-  Area <<- polyarea(hull$hullPoly[,1], hull$hullPoly[,2])
+  Area <<- polyarea(hull[,1], hull[,2])
   lambda97 <<- nrow(coords97)/Area
   
   #####test simulation with MLEs from paper (p. 198)
