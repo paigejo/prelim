@@ -2,8 +2,8 @@ library(fields)
 
 # function to estimate empirical variogram of one PP
 getVario = function(PP, GP, breaks=seq(0, 1, length=100), 
-                    xrange=seq(0, 1, length=128), 
-                    yrange=seq(0, 1, length=128)) {
+                    xrange=seq(0, 1, length=64), 
+                    yrange=seq(0, 1, length=64)) {
   coords = cbind(PP$x, PP$y)
   
   #####get the associated marks for the PP at the GP
@@ -22,7 +22,7 @@ getVario = function(PP, GP, breaks=seq(0, 1, length=100),
   # find index of GP coords that are the same as the PP coords
   #GPCoords = attr(GP, "coords")
   GPCoords = make.surface.grid(list(x=GP$xcol, y=GP$yrow))
-  findIndex = function(coords, len=128) {
+  findIndex = function(coords, len=64) {
     #convert coords to x and y grid indices
     coords = coords*(len-1) + 1
     xInd = coords[1]
@@ -79,9 +79,9 @@ varioAnalysis = function(nsims = 500) {
     unifVGs[i,] = getVGMean(unifVG, breaks=breaks)$ys
     clustVGs[i,] = getVGMean(clustVG, breaks=breaks)$ys
     prefVGs[i,] = getVGMean(prefVG, breaks=breaks)$ys
-    unifNs[i,] = getVGMean(unifVG, breaks=breaks, statFun="length", statArgs=NULL)
-    clustNs[i,] = getVGMean(clustVG, breaks=breaks, statFun="length", statArgs=NULL)
-    prefNs[i,] = getVGMean(prefVG, breaks=breaks, statFun="length", statArgs=NULL)
+    unifNs[i,] = getVGMean(unifVG, breaks=breaks, statFun="length", statArgs=NULL)$ys
+    clustNs[i,] = getVGMean(clustVG, breaks=breaks, statFun="length", statArgs=NULL)$ys
+    prefNs[i,] = getVGMean(prefVG, breaks=breaks, statFun="length", statArgs=NULL)$ys
   }
   
   # get weights for averages for any given bin
@@ -125,12 +125,12 @@ varioAnalysis = function(nsims = 500) {
   #plot of bias +- 1.96 SEs
   print("Generating plots")
   par(mfrow=c(1,2))
-  plot(centers, unifBias + 1.96*unifSDs/sqrt(nsims), main="", ylab="Bias", type="l", xlab="u", ylim=c(-1, .5))
-  lines(centers, unifBias - 1.96*unifSDs/sqrt(nsims))
-  lines(centers, clustBias + 1.96*clustSDs/sqrt(nsims), lty=2)
-  lines(centers, clustBias - 1.96*clustSDs/sqrt(nsims), lty=2)
-  lines(centers, prefBias + 1.96*prefSDs/sqrt(nsims), lty=3)
-  lines(centers, prefBias - 1.96*prefSDs/sqrt(nsims), lty=3)
+  plot(centers, unifBias + 1.96*unifSDs/sqrt(unifTotNs), main="", ylab="Bias", type="l", xlab="u", ylim=c(-1, .5))
+  lines(centers, unifBias - 1.96*unifSDs/sqrt(unifTotNs))
+  lines(centers, clustBias + 1.96*clustSDs/sqrt(clustTotNs), lty=2)
+  lines(centers, clustBias - 1.96*clustSDs/sqrt(clustTotNs), lty=2)
+  lines(centers, prefBias + 1.96*prefSDs/sqrt(prefTotNs), lty=3)
+  lines(centers, prefBias - 1.96*prefSDs/sqrt(prefTotNs), lty=3)
   
   #plot of SDs
   plot(centers, unifSDs, main="", ylab="SD", xlab="u", ylim=c(0, 2), type="l")
@@ -149,6 +149,7 @@ varioAnalysis = function(nsims = 500) {
   plot(centers, unifSDs, main="", ylab="SD", xlab="u", ylim=c(0, 2), type="l")
   lines(centers, clustSDs, lty=2)
   lines(centers, prefSDs, lty=3)
+  par(mfrow=c(1,1))
   
   ##### now try taking weighted means of data and calculating standard errors based on the 
   #####number of total observations
@@ -160,7 +161,10 @@ varioAnalysis = function(nsims = 500) {
 #   prefWeights = sweep(prefNs, 2, prefTotNs, "/")
 #   unifWeightedVG 
   
-  invisible(NULL)
+  return(list(centers=centers, breaks=breaks, unifNs=unifNs, clustNs=clustNs, prefNs=prefNs,
+              unifSDs=unifSDs, clustSDs = clustSDs, prefSDs=prefSDs, unifBias=unifBias, 
+              clustBias=clustBias, prefBias=prefBias, unifVGs=unifVGs, clustVGs=clustVGs, 
+              prefVGs=prefVGs, trueYs=trueYs, nsims=nsims))
 }
 
 ######################################################################

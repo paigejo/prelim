@@ -3,15 +3,8 @@ library(spatstat)
 
 # genMaternGP generates a Matern covariance GP on the unit square
 # with the parameters given the in text
-genMaternGP = function(nsim=1, nx=128, ny=128) {
+genMaternGP = function(nsim=1, nx=64, ny=64, mu=4, sigmasq=1.5, phi=.15, kappa=1, beta=2, tausq=0) {
   #mu = 4, sigma^2=1.5, phi=0.15, kappa=1, beta=2, tau^2 = 0
-  
-  mu = 4
-  sigmasq = 1.5
-  phi= 0.15
-  kappa=1
-  beta = 0
-  tausq = 0
   
   # use RFmatern and RFsimulate
   obj = RMmatern(nu=kappa, var=sigmasq, scale=phi)
@@ -53,15 +46,10 @@ genUnifPP = function(numSamples=1) {
 
 # get a a clustered point process using log-Gaussian Cox Process
 # model
-genPreferentialPP = function(numSamples=1) {
+genPreferentialPP = function(numSamples=1, xyRes = 64, 
+                             mu=4, sigmasq=1.5, phi=.15, kappa=1, beta=2, tausq=0) {
   #mu = 4, sigma^2=1.5, phi=0.15, kappa=1, beta=2, tau^2 = 0
   # exp(mu + sigma^2/2)
-  mu = 4
-  sigmasq = 1.5
-  phi= 0.15
-  kappa=1
-  beta = 2
-  tausq = 0
   varEst = beta^2*sigmasq
   #overallMuEst = log(nPts) - varEst/2
   
@@ -71,7 +59,7 @@ genPreferentialPP = function(numSamples=1) {
   Lambdas = list()
   GPs = list()
   for(i in 1:numSamples) {
-    sim = rLGCP("matern", mu, var=varEst, scale=phi, 
+    sim = rLGCP("matern", mu, var=varEst, scale=phi, dimyx=xyRes, 
                       nu=kappa, nsim=1, drop=TRUE, saveLambda=TRUE)
     sims[[i]] = sim
     Lambdas[[i]] = attr(sim, "Lambda")
@@ -83,12 +71,15 @@ genPreferentialPP = function(numSamples=1) {
 
 #generate clustered point processes (preferentially sampled from 
 # a different GP)
-genClusterPP = function(numSamples=1) {
+genClusterPP = function(numSamples=1, nx=64, ny=64, 
+                        mu=4, sigmasq=1.5, phi=.15, kappa=1, beta=2, tausq=0) {
   # generate pereferential PPs, but associate with different
   # GPs to make clustered, non-preferential sampling
   
-  preferentialPPs = genPreferentialPP(numSamples)
-  newGPs = genMaternGP(nsim=numSamples)
+  preferentialPPs = genPreferentialPP(numSamples, mu=mu, sigmasq=sigmasq, phi=phi, 
+                                      kappa=kappa, beta=beta, tausq=tausq)
+  newGPs = genMaternGP(nsim=numSamples, nx=nx, ny=nx, mu=mu, sigmasq=sigmasq, phi=phi, 
+                       kappa=kappa, beta=beta, tausq=tausq)
   preferentialPPs$GPs = newGPs
   preferentialPPs$Lambda = NULL
   

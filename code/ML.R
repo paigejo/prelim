@@ -571,8 +571,9 @@ genS = function(params, gridCoords) {
   beta = params[5]
   
   #use RMexp and RMsimulate to perform circulant embedding to quickly simulate S
+  #TODO: generate multiple simulations to improve code efficiency
   RMobj = RMexp(var=sigmasq, scale=phi)
-  sim = RFsimulate(RMobj, x=gridCoords[,1], y=gridCoords[,2])
+  sim = RFsimulate(RMobj, x=gridCoords[,1], y=gridCoords[,2]) 
   sim$variable1 = sim$variable1 #add mean? No!
   
   return(sim)
