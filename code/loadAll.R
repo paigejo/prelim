@@ -12,6 +12,7 @@ source("loadData.R")
 source("support_funs.R")
 #source("makeAlphaHull.R")
 source("simulatePP.R")
+source("simKriging.R")
 source("estimateVGrams.R")
 source("ML.R")
 #source("estimateKfun.R") this is a script, not a set of functions
