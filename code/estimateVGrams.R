@@ -167,6 +167,27 @@ varioAnalysis = function(nsims = 500) {
               prefVGs=prefVGs, trueYs=trueYs, nsims=nsims))
 }
 
+#recreate figure 5
+makeVGPlot = function(coords, logDat, tau=sqrt(nuggetMLE), sigma=sqrt(sillMLE), kappa=0.5, phi=scaleMLE, 
+                      main="Variogram", ylim=c(0, .3), breaks=seq(0, 1.2, l=25)) {
+  
+  #theoretical variogram given x (distance)
+  trueVG = function(x) {
+    sigma^2*(1 - Matern(x, nu=kappa, range=phi)) + tau^2
+  }
+  
+  #get empirical variogram
+  empVG = vgram(coords, logDat)
+  
+  #make plots
+  VGMean = getVGMean(empVG, breaks=breaks)
+  centers = VGMean$centers
+  ys = VGMean$ys
+  plot(centers, ys, main=main, ylim=ylim, pch=19, cex=.75, ylab="Variance", xlab="Distance (100's of km)")
+  xs = seq(min(breaks), max(breaks), l=100)
+  lines(xs, trueVG(xs))
+}
+
 ######################################################################
 ######################################################################
 ######################################################################
@@ -201,7 +222,7 @@ getVGMean = function(x, N = 10, breaks = pretty(x$d, N, eps.correct = 1),
 }
 
 plotVGStat = function(x, N = 10, breaks = pretty(x$d, N, eps.correct = 1), 
-                      add = FALSE, ...) 
+                      add = FALSE, statFun="mean", statArgs=list(na.rm=TRUE), ...) 
 {
   otherArgs = list(...)
   type = x$type
@@ -256,14 +277,11 @@ plotVGStat = function(x, N = 10, breaks = pretty(x$d, N, eps.correct = 1),
     type = otherArgs$type
     otherArgs$type = NULL
   }
-  statFunFromBreak = function(breakBounds = c(-Inf, Inf)) {
-    meanVG(x, minD=breakBounds[1], maxD=breakBounds[2], na.rm=TRUE)
-  }
-  lowBreaks = breaks
-  highBreaks = c(breaks[2:length(breaks)], Inf)
-  breakBounds = cbind(lowBreaks, highBreaks)
-  centers = apply(breakBounds, 1, mean, na.rm=TRUE)
-  ys = apply(breakBounds, 1, meansFromBreak)
+  
+  # get variogram statistic we're interested in (usually mean of point cloud in bin)
+  out = getVGMean(x, breaks=breaks, statFun=statFun, statArgs=statArgs)
+  ys = out$ys
+  centers = out$centers
   if(x$type == "variogram")
     ys=sqrt(ys)
   notNas = !is.na(ys)
