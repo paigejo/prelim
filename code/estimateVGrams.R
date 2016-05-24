@@ -1,9 +1,10 @@
 library(fields)
+resGP <<- 256
 
 # function to estimate empirical variogram of one PP
 getVario = function(PP, GP, breaks=seq(0, 1, length=100), 
-                    xrange=seq(0, 1, length=64), 
-                    yrange=seq(0, 1, length=64)) {
+                    xrange=seq(0, 1, length=resGP), 
+                    yrange=seq(0, 1, length=resGP)) {
   coords = cbind(PP$x, PP$y)
   
   #####get the associated marks for the PP at the GP
@@ -15,27 +16,27 @@ getVario = function(PP, GP, breaks=seq(0, 1, length=100),
     roundedCoordVec = coordRange[inds]
     return(roundedCoordVec)
   }
-  roundX = roundToRange(coords[,1], xrange)
-  roundY = roundToRange(coords[,2], yrange)
+  roundX = roundToRange(coords[,1], GP$xcol)
+  roundY = roundToRange(coords[,2], GP$yrow)
   roundCoords = cbind(roundX, roundY)
   
   # find index of GP coords that are the same as the PP coords
   #GPCoords = attr(GP, "coords")
   GPCoords = make.surface.grid(list(x=GP$xcol, y=GP$yrow))
-  findIndex = function(coords, len=64) {
-    #convert coords to x and y grid indices
-    coords = coords*(len-1) + 1
-    xInd = coords[1]
-    yInd = coords[2]
-    return((yInd-1)*len + xInd)
+  findIndex = function(coordPair) {
+    coords.eq = function(latticePair) {
+      return(all(coordPair == latticePair))
+    }
+    eq = apply(GPCoords, 1, coords.eq)
+    return(which(eq))
   }
-  inds = apply(roundCoords, 1, findIndex, len=length(xrange))
+  inds = unlist(apply(roundCoords, 1, findIndex))
   
   #get PP marks from GP using the indices found above
   PPmarks = t(matrix(GP$v, ncol=length(GP$xcol)))[inds]
   
   # now compute the variogram (don't use rounded coordinates, though)
-  return(vgram(coords, PPmarks, breaks=breaks))
+  return(vgram(roundCoords, PPmarks, breaks=breaks))
 }
 
 #function to estimate bias and standard deviations of variogram estimates 
@@ -46,7 +47,7 @@ varioAnalysis = function(nsims = 500) {
   mu=4
   
   # get bin breaks and centers for variograms
-  breaks = seq(0, 1, length=20) #VG bin breaks
+  breaks = seq(0, 1, length=40) #VG bin breaks
   lowBreaks = breaks
   highBreaks = c(breaks[2:length(breaks)], Inf)
   breakBounds = cbind(lowBreaks, highBreaks)
@@ -57,6 +58,9 @@ varioAnalysis = function(nsims = 500) {
   unifVGs = matrix(nrow=nsims, ncol=length(centers))
   clustVGs = matrix(nrow=nsims, ncol=length(centers))
   prefVGs = matrix(nrow=nsims, ncol=length(centers))
+  unifDs = matrix(nrow=nsims, ncol=length(centers))
+  clustDs = matrix(nrow=nsims, ncol=length(centers))
+  prefDs = matrix(nrow=nsims, ncol=length(centers))
   unifNs = matrix(nrow=nsims, ncol=length(centers))
   clustNs = matrix(nrow=nsims, ncol=length(centers))
   prefNs = matrix(nrow=nsims, ncol=length(centers))
@@ -76,9 +80,15 @@ varioAnalysis = function(nsims = 500) {
     unifVG = getVario(unifPP, GP, breaks=breaks)
     clustVG = getVario(clustPP, GP, breaks=breaks)
     prefVG = getVario(prefPP, GP, breaks=breaks)
-    unifVGs[i,] = getVGMean(unifVG, breaks=breaks)$ys
-    clustVGs[i,] = getVGMean(clustVG, breaks=breaks)$ys
-    prefVGs[i,] = getVGMean(prefVG, breaks=breaks)$ys
+    unifVGStats = getVGMean(unifVG, breaks=breaks)
+    clustVGStats = getVGMean(clustVG, breaks=breaks)
+    prefVGStats = getVGMean(prefVG, breaks=breaks)
+    unifVGs[i,] = unifVGStats$ys
+    clustVGs[i,] = clustVGStats$ys
+    prefVGs[i,] = prefVGStats$ys
+    unifDs[i,] = unifVGStats$meanCenters
+    clustDs[i,] = clustVGStats$meanCenters
+    prefDs[i,] = prefVGStats$meanCenters
     unifNs[i,] = getVGMean(unifVG, breaks=breaks, statFun="length", statArgs=NULL)$ys
     clustNs[i,] = getVGMean(clustVG, breaks=breaks, statFun="length", statArgs=NULL)$ys
     prefNs[i,] = getVGMean(prefVG, breaks=breaks, statFun="length", statArgs=NULL)$ys
@@ -92,6 +102,11 @@ varioAnalysis = function(nsims = 500) {
   clustWeights = sweep(clustNs, 2, clustTotNs, "/")
   prefWeights = sweep(prefNs, 2, prefTotNs, "/")
   
+  #compute average centers
+  unifMeanCenters = colSums(unifDs * unifWeights, na.rm=TRUE)
+  clustMeanCenters = colSums(clustDs * clustWeights, na.rm=TRUE)
+  prefMeanCenters = colSums(prefDs * prefWeights, na.rm=TRUE)
+  
   #get theoretical variogram function based on true Matern parameters
   #mu = 4, sigma^2=1.5, phi=0.15, kappa=1, beta=2, tau^2 = 0
   # exp(mu + sigma^2/2)
@@ -99,38 +114,41 @@ varioAnalysis = function(nsims = 500) {
   phi= 0.15
   kappa=1
   beta = 2
-  varEst = beta^2*sigmasq
+  # varEst = beta^2*sigmasq
   theorVG = function(x) {
-    beta^2*sigmasq*(1 - Matern(x, range=phi, nu=kappa)) #since tausq = 0
+    sigmasq*(1 - Matern(x, range=phi, nu=kappa)) #since tausq = 0
   }
   trueYs = theorVG(centers)
   
   # calculate bias of empirical VGs
   print("Computing variogram bias and standard deviations")
-  unifBias = apply(sweep(unifVGs, 2, trueYs), 2, mean, na.rm=TRUE)
-  clustBias = apply(sweep(clustVGs, 2, trueYs), 2, mean, na.rm=TRUE)
-  prefBias = apply(sweep(prefVGs, 2, trueYs), 2, mean, na.rm=TRUE)
+  unifBias = apply(sweep(unifVGs, 2, theorVG(unifMeanCenters)), 2, mean, na.rm=TRUE)
+  clustBias = apply(sweep(clustVGs, 2, theorVG(clustMeanCenters)), 2, mean, na.rm=TRUE)
+  prefBias = apply(sweep(prefVGs, 2, theorVG(prefMeanCenters)), 2, mean, na.rm=TRUE)
   
   # also calculate bias using weighted average
-  unifWeightedBias = colSums(sweep(unifVGs, 2, trueYs)*unifWeights)
-  clustWeightedBias = colSums(sweep(clustVGs, 2, trueYs)*clustWeights)
-  prefWeightedBias = colSums(sweep(prefVGs, 2, trueYs)*prefWeights)
+#   unifWeightedBias = colSums(sweep(unifVGs, 2, trueYs)*unifWeights)
+#   clustWeightedBias = colSums(sweep(clustVGs, 2, trueYs)*clustWeights)
+#   prefWeightedBias = colSums(sweep(prefVGs, 2, trueYs)*prefWeights)
+  unifWeightedBias = colSums(sweep(unifVGs, 2, theorVG(unifMeanCenters))*unifWeights, na.rm=TRUE)
+  clustWeightedBias = colSums(sweep(clustVGs, 2, theorVG(clustMeanCenters))*clustWeights, na.rm=TRUE)
+  prefWeightedBias = colSums(sweep(prefVGs, 2, theorVG(prefMeanCenters))*prefWeights, na.rm=TRUE)
   
   # calculate standard deviation of empirical VGs
-  unifSDs = apply(unifVGs, 2, sd)
-  clustSDs = apply(clustVGs, 2, sd)
-  prefSDs = apply(prefVGs, 2, sd)
+  unifSDs = apply(unifVGs, 2, sd, na.rm=TRUE)
+  clustSDs = apply(clustVGs, 2, sd, na.rm=TRUE)
+  prefSDs = apply(prefVGs, 2, sd, na.rm=TRUE)
   
   ##### make plot emulating Fig. 2 from paper
   #plot of bias +- 1.96 SEs
   print("Generating plots")
   par(mfrow=c(1,2))
-  plot(centers, unifBias + 1.96*unifSDs/sqrt(unifTotNs), main="", ylab="Bias", type="l", xlab="u", ylim=c(-1, .5))
-  lines(centers, unifBias - 1.96*unifSDs/sqrt(unifTotNs))
-  lines(centers, clustBias + 1.96*clustSDs/sqrt(clustTotNs), lty=2)
-  lines(centers, clustBias - 1.96*clustSDs/sqrt(clustTotNs), lty=2)
-  lines(centers, prefBias + 1.96*prefSDs/sqrt(prefTotNs), lty=3)
-  lines(centers, prefBias - 1.96*prefSDs/sqrt(prefTotNs), lty=3)
+  plot(centers, unifBias + 1.96*unifSDs/sqrt(nsims), main="", ylab="Bias", type="l", xlab="u", ylim=c(-1, .5))
+  lines(centers, unifBias - 1.96*unifSDs/sqrt(nsims))
+  lines(centers, clustBias + 1.96*clustSDs/sqrt(nsims), lty=2)
+  lines(centers, clustBias - 1.96*clustSDs/sqrt(nsims), lty=2)
+  lines(centers, prefBias + 1.96*prefSDs/sqrt(nsims), lty=3)
+  lines(centers, prefBias - 1.96*prefSDs/sqrt(nsims), lty=3)
   
   #plot of SDs
   plot(centers, unifSDs, main="", ylab="SD", xlab="u", ylim=c(0, 2), type="l")
@@ -138,12 +156,12 @@ varioAnalysis = function(nsims = 500) {
   lines(centers, prefSDs, lty=3)
   
   # do same plots but with weighted bias
-  plot(centers, unifWeightedBias + 1.96*unifSDs/sqrt(nsims), main="", ylab="Bias", type="l", xlab="u", ylim=c(-1, .5))
-  lines(centers, unifWeightedBias - 1.96*unifSDs/sqrt(nsims))
-  lines(centers, clustWeightedBias + 1.96*clustSDs/sqrt(nsims), lty=2)
-  lines(centers, clustWeightedBias - 1.96*clustSDs/sqrt(nsims), lty=2)
-  lines(centers, prefWeightedBias + 1.96*prefSDs/sqrt(nsims), lty=3)
-  lines(centers, prefWeightedBias - 1.96*prefSDs/sqrt(nsims), lty=3)
+  plot(centers, unifWeightedBias + 1.96*unifSDs/sqrt(unifTotNs), main="", ylab="Bias", type="l", xlab="u", ylim=c(-1, .5))
+  lines(centers, unifWeightedBias - 1.96*unifSDs/sqrt(unifTotNs))
+  lines(centers, clustWeightedBias + 1.96*clustSDs/sqrt(clustTotNs), lty=2)
+  lines(centers, clustWeightedBias - 1.96*clustSDs/sqrt(clustTotNs), lty=2)
+  lines(centers, prefWeightedBias + 1.96*prefSDs/sqrt(prefTotNs), lty=3)
+  lines(centers, prefWeightedBias - 1.96*prefSDs/sqrt(prefTotNs), lty=3)
   
   #plot of SDs
   plot(centers, unifSDs, main="", ylab="SD", xlab="u", ylim=c(0, 2), type="l")
@@ -151,15 +169,30 @@ varioAnalysis = function(nsims = 500) {
   lines(centers, prefSDs, lty=3)
   par(mfrow=c(1,1))
   
-  ##### now try taking weighted means of data and calculating standard errors based on the 
-  #####number of total observations
-#   unifTotNs = colSums(unifNs)
-#   clustTotNs = colSums(clustNs)
-#   prefTotNs = colSums(prefNs)
-#   unifWeights = sweep(unifNs, 2, unifTotNs, "/")
-#   clustWeights = sweep(clustNs, 2, clustTotNs, "/")
-#   prefWeights = sweep(prefNs, 2, prefTotNs, "/")
-#   unifWeightedVG 
+  ##### now recreate Fig. 1 from paper
+  par(mfrow=c(1,1), family="serif")
+  png("unifScheme.png", width=500, height=500)
+  plot(GP, main="Uniform Sample")
+  axis(1, at=seq(0, 1, l=3))
+  axis(2, at=seq(0, 1, l=3))
+  plot(unifPP, add=TRUE, pch=19, cex=.3)
+  dev.off()
+  
+  png("clustScheme.png", width=500, height=500)
+  plot(GP, main="Clustered Sample")
+  axis(1, at=seq(0, 1, l=3))
+  axis(2, at=seq(0, 1, l=3))
+  plot(clustPP, add=TRUE, pch=19, cex=.3)
+  dev.off()
+  
+  png("prefScheme.png", width=500, height=500)
+  plot(GP, main="Preferential Sample")
+  axis(1, at=seq(0, 1, l=3))
+  axis(2, at=seq(0, 1, l=3))
+  plot(prefPP, add=TRUE, pch=19, cex=.3)
+  dev.off()
+  
+  par(mfrow=c(1,1))
   
   return(list(centers=centers, breaks=breaks, unifNs=unifNs, clustNs=clustNs, prefNs=prefNs,
               unifSDs=unifSDs, clustSDs = clustSDs, prefSDs=prefSDs, unifBias=unifBias, 
@@ -217,8 +250,10 @@ getVGMean = function(x, N = 10, breaks = pretty(x$d, N, eps.correct = 1),
   breakBounds = cbind(lowBreaks, highBreaks)
   centers = apply(breakBounds, 1, mean, na.rm=TRUE)
   ys = apply(breakBounds, 1, meansFromBreak)
+  x$vgram = x$d
+  meanCenters = apply(breakBounds, 1, meansFromBreak)
   
-  return(list(centers=centers, ys=ys, type=x$type))
+  return(list(centers=centers, meanCenters=meanCenters, ys=ys, type=x$type))
 }
 
 plotVGStat = function(x, N = 10, breaks = pretty(x$d, N, eps.correct = 1), 
