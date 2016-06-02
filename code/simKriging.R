@@ -7,22 +7,48 @@ unitSquareKriging = function(nsims = 500) {
   prefPreds = 1:nsims
   trueVals = 1:nsims
   
+  #preallocate data vectors
+  unifPreds1 = numeric(nsims)
+  clustPreds1 = numeric(nsims)
+  prefPreds1 = numeric(nsims)
+  trueVals1 = numeric(nsims)
+  unifPreds2 = numeric(nsims)
+  clustPreds2 = numeric(nsims)
+  prefPreds2 = numeric(nsims)
+  trueVals2 = numeric(nsims)
+  
+  #generate Kriging predictor statistics
+  unifPPs1 = genUnifPP(numSamples = nsims)
+  clustPPs1 = genClusterPP2(numSamples = nsims, method="cutoff")
+  prefPPs1 = genPreferentialPP2(numSamples = nsims, method="cutoff")
+  GPs1 = prefPPs1$GPs
+  unifPPs2 = genUnifPP(numSamples = nsims)
+  clustPPs2 = genClusterPP2(numSamples = nsims,mu=1.515, sigmasq=.138, phi=.313, kappa=.5, beta=-2.198, tausq=.059, method="cutoff")
+  prefPPs2 = genPreferentialPP2(numSamples = nsims,mu=1.515, sigmasq=.138, phi=.313, kappa=.5, beta=-2.198, tausq=.059, method="cutoff")
+  GPs2 = prefPPs2$GPs
+  lambda = .059/.138
+  
+  #add random noise to model 2 GPs:
+  addNoise = function(x) {
+    x$v = x$v + rnorm(length(x$v), sd=sqrt(.059))
+    return(x)
+  }
+  GPs2 = lapply(GPs2, addNoise)
+  
   for(i in 1:nsims) {
     print(paste0("generating ", i, "th set of simulations"))
     
     #get PP i of each type
-    unifPP1 = genUnifPP()[[1]]
-    clustPP1 = genClusterPP()$sims[[1]]
-    prefPP1 = genPreferentialPP()
-    unifPP2 = genUnifPP()[[1]]
-    clustPP2 = genClusterPP(mu=1.515, sigmasq=.138, phi=.313, kappa=.5, beta=-2.198, tausq=.059)$sims[[1]]
-    prefPP2 = genPreferentialPP(mu=1.515, sigmasq=.138, phi=.313, kappa=.5, beta=-2.198, tausq=.059)
+    unifPP1 = unifPPs1[[i]]
+    clustPP1 = clustPPs1$sims[[i]]
+    prefPP1 = prefPPs1$sims[[i]]
+    unifPP2 = unifPPs2[[i]]
+    clustPP2 = clustPPs2$sims[[i]]
+    prefPP2 = prefPPs2$sims[[i]]
     
     #get corresponding GP
-    GP1 = prefPP1$GPs[[1]]
-    prefPP1 = prefPP1$sims[[1]]
-    GP2 = prefPP2$GPs[[1]]
-    prefPP2 = prefPP2$sims[[1]]
+    GP1 = GPs1[[i]]
+    GP2 = GPs2[[i]]
     
     #compute Kriging estimators and true values of GP (model 1)
     unifStats1 = getKrigingPreds(unifPP1, GP1)
@@ -34,9 +60,9 @@ unitSquareKriging = function(nsims = 500) {
     trueVals1[i] = unifStats1$trueVals
     
     #compute Kriging estimators and true values of GP (model 2)
-    unifStats2 = getKrigingPreds(unifPP2, GP2)
-    clustStats2 = getKrigingPreds(clustPP2, GP2)
-    prefStats2 = getKrigingPreds(prefPP2, GP2)
+    unifStats2 = getKrigingPreds(unifPP2, GP2, lambda=lambda)
+    clustStats2 = getKrigingPreds(clustPP2, GP2, lambda=lambda)
+    prefStats2 = getKrigingPreds(prefPP2, GP2, lambda=lambda)
     unifPreds2[i] = unifStats2$preds
     clustPreds2[i] = clustStats2$preds
     prefPreds2[i] = prefStats2$preds
@@ -46,79 +72,79 @@ unitSquareKriging = function(nsims = 500) {
   zThresh = qnorm(.975)
   
   #get bias confidence intervals (model 1)
-  unifBiasMean1 = mean(unifPreds1 - trueValues1)
-  unifBiasSE1 = sd(unifPreds1 - trueValues1)/sqrt(nsims)
+  unifBiasMean1 = mean(unifPreds1 - trueVals1)
+  unifBiasSE1 = sd(unifPreds1 - trueVals1)/sqrt(nsims)
   unifBiasLB1 = unifBiasMean1 - zThresh*unifBiasSE1
   unifBiasUB1 = unifBiasMean1 + zThresh*unifBiasSE1
-  unifBiasConf1 = c(unifLB1, unifUB1)
-  clustBiasMean1 = mean(clustPreds1 - trueValues1)
-  clustBiasSE1 = sd(clustPreds1 - trueValues1)/sqrt(nsims)
+  unifBiasConf1 = c(unifBiasLB1, unifBiasUB1)
+  clustBiasMean1 = mean(clustPreds1 - trueVals1)
+  clustBiasSE1 = sd(clustPreds1 - trueVals1)/sqrt(nsims)
   clustBiasLB1 = clustBiasMean1 - zThresh*clustBiasSE1
   clustBiasUB1 = clustBiasMean1 + zThresh*clustBiasSE1
-  clustBiasConf1 = c(clustLB1, clustUB1)
-  prefBiasMean1 = mean(prefPreds1 - trueValues1)
-  prefBiasSE1 = sd(prefPreds1 - trueValues1)/sqrt(nsims)
+  clustBiasConf1 = c(clustBiasLB1, clustBiasUB1)
+  prefBiasMean1 = mean(prefPreds1 - trueVals1)
+  prefBiasSE1 = sd(prefPreds1 - trueVals1)/sqrt(nsims)
   prefBiasLB1 = prefBiasMean1 - zThresh*prefBiasSE1
   prefBiasUB1 = prefBiasMean1 + zThresh*prefBiasSE1
-  prefBiasConf1 = c(prefLB1, prefUB1)
+  prefBiasConf1 = c(prefBiasLB1, prefBiasUB1)
   
   #get bias confidence intervals (model 2)
-  unifBiasMean2 = mean(unifPreds2 - trueValues2)
-  unifBiasSE2 = sd(unifPreds2 - trueValues2)/sqrt(nsims)
+  unifBiasMean2 = mean(unifPreds2 - trueVals2)
+  unifBiasSE2 = sd(unifPreds2 - trueVals2)/sqrt(nsims)
   unifBiasLB2 = unifBiasMean2 - zThresh*unifBiasSE2
   unifBiasUB2 = unifBiasMean2 + zThresh*unifBiasSE2
-  unifBiasConf2 = c(unifLB2, unifUB2)
-  clustBiasMean2 = mean(clustPreds2 - trueValues2)
-  clustBiasSE2 = sd(clustPreds2 - trueValues2)/sqrt(nsims)
+  unifBiasConf2 = c(unifBiasLB2, unifBiasUB2)
+  clustBiasMean2 = mean(clustPreds2 - trueVals2)
+  clustBiasSE2 = sd(clustPreds2 - trueVals2)/sqrt(nsims)
   clustBiasLB2 = clustBiasMean2 - zThresh*clustBiasSE2
   clustBiasUB2 = clustBiasMean2 + zThresh*clustBiasSE2
-  clustBiasConf2 = c(clustLB2, clustUB2)
-  prefBiasMean2 = mean(prefPreds2 - trueValues2)
-  prefBiasSE2 = sd(prefPreds2 - trueValues2)/sqrt(nsims)
+  clustBiasConf2 = c(clustBiasLB2, clustBiasUB2)
+  prefBiasMean2 = mean(prefPreds2 - trueVals2)
+  prefBiasSE2 = sd(prefPreds2 - trueVals2)/sqrt(nsims)
   prefBiasLB2 = prefBiasMean2 - zThresh*prefBiasSE2
   prefBiasUB2 = prefBiasMean2 + zThresh*prefBiasSE2
-  prefBiasConf2 = c(prefLB2, prefUB2)
+  prefBiasConf2 = c(prefBiasLB2, prefBiasUB2)
   
   # get RMS and confidence intervals (model 1)
   unifRMSMean1 = sqrt(mean((unifPreds1 - trueVals1)^2))
   clustRMSMean1 = sqrt(mean((clustPreds1 - trueVals1)^2))
   prefRMSMean1 = sqrt(mean((prefPreds1 - trueVals1)^2))
-  unifRMSSE1 = sd((unifPreds1 - trueValues1)^2)/(2*sqt(nsim)*unifRMSMean1)
-  clustRMSSE1 = sd((clustPreds1 - trueValues1)^2)/(2*sqt(nsim)*clustRMSMean1)
-  prefRMSSE1 = sd((prefPreds1 - trueValues1)^2)/(2*sqt(nsim)*prefRMSMean1)
-  unifRMSConf1 = c(unifRMSMean1 - zThresh*unifREMSE1, unifRMSMean1 + zThresh*unifREMSE1)
-  clustRMSConf1 = c(clustRMSMean1 - zThresh*clustREMSE1, clustRMSMean1 + zThresh*clustREMSE1)
-  prefRMSConf1 = c(prefRMSMean1 - zThresh*prefREMSE1, prefRMSMean1 + zThresh*prefREMSE1)
+  unifRMSE1 = sd((unifPreds1 - trueVals1)^2)/(2*sqrt(nsims)*unifRMSMean1)
+  clustRMSE1 = sd((clustPreds1 - trueVals1)^2)/(2*sqrt(nsims)*clustRMSMean1)
+  prefRMSE1 = sd((prefPreds1 - trueVals1)^2)/(2*sqrt(nsims)*prefRMSMean1)
+  unifRMSConf1 = c(unifRMSMean1 - zThresh*unifRMSE1, unifRMSMean1 + zThresh*unifRMSE1)
+  clustRMSConf1 = c(clustRMSMean1 - zThresh*clustRMSE1, clustRMSMean1 + zThresh*clustRMSE1)
+  prefRMSConf1 = c(prefRMSMean1 - zThresh*prefRMSE1, prefRMSMean1 + zThresh*prefRMSE1)
   
   # get RMS and confidence intervals (model 2)
   unifRMSMean2 = sqrt(mean((unifPreds2 - trueVals2)^2))
   clustRMSMean2 = sqrt(mean((clustPreds2 - trueVals2)^2))
   prefRMSMean2 = sqrt(mean((prefPreds2 - trueVals2)^2))
-  unifRMSSE2 = sd((unifPreds2 - trueValues2)^2)/(2*sqt(nsim)*unifRMSMean2)
-  clustRMSSE2 = sd((clustPreds2 - trueValues2)^2)/(2*sqt(nsim)*clustRMSMean2)
-  prefRMSSE2 = sd((prefPreds2 - trueValues2)^2)/(2*sqt(nsim)*prefRMSMean2)
-  unifRMSConf2 = c(unifRMSMean2 - zThresh*unifREMSE2, unifRMSMean2 + zThresh*unifREMSE2)
-  clustRMSConf2 = c(clustRMSMean2 - zThresh*clustREMSE2, clustRMSMean2 + zThresh*clustREMSE2)
-  prefRMSConf2 = c(prefRMSMean2 - zThresh*prefREMSE2, prefRMSMean2 + zThresh*prefREMSE2)
+  unifRMSE2 = sd((unifPreds2 - trueVals2)^2)/(2*sqrt(nsims)*unifRMSMean2)
+  clustRMSE2 = sd((clustPreds2 - trueVals2)^2)/(2*sqrt(nsims)*clustRMSMean2)
+  prefRMSE2 = sd((prefPreds2 - trueVals2)^2)/(2*sqrt(nsims)*prefRMSMean2)
+  unifRMSConf2 = c(unifRMSMean2 - zThresh*unifRMSE2, unifRMSMean2 + zThresh*unifRMSE2)
+  clustRMSConf2 = c(clustRMSMean2 - zThresh*clustRMSE2, clustRMSMean2 + zThresh*clustRMSE2)
+  prefRMSConf2 = c(prefRMSMean2 - zThresh*prefRMSE2, prefRMSMean2 + zThresh*prefRMSE2)
   
-  return(unifBiasConf1=unifBiasConf1, unifBiasConf2=unifBiasConf2, unifRMSConf1=unifRMSConf1, unifRMSConf2=unifRMSConf2, 
+  return(list(unifBiasConf1=unifBiasConf1, unifBiasConf2=unifBiasConf2, unifRMSConf1=unifRMSConf1, unifRMSConf2=unifRMSConf2, 
          clustBiasConf1=clustBiasConf1, clustBiasConf2=clustBiasConf2, clustRMSConf1=clustRMSConf1, clustRMSConf2=clustRMSConf2, 
-         prefBiasConf1=prefBiasConf1, prefBiasConf2=prefBiasConf2, prefRMSConf1=prefRMSConf1, prefRMSConf2=prefRMSConf2)
+         prefBiasConf1=prefBiasConf1, prefBiasConf2=prefBiasConf2, prefRMSConf1=prefRMSConf1, prefRMSConf2=prefRMSConf2))
 }
 
 # NOTE: if a window object is passed, it must have a ``bdry'' field with a 
 # polygon of the boundary.  Further note that the ``res'' argument is ignored 
 # unless the domainWin is passed as an argument.
 getKrigingPreds = function(PP, GP, predCoords = rbind(c(.49,.49)), 
-                               domainWin = NULL, res=101) {
+                               domainWin = NULL, res=101, lambda=0) {
   # get Kriging predictions at x0=(.49, .49)
   
     PPcoords = cbind(PP$x, PP$y)
     if(is.null(domainWin))
-      GPcoords = make.surface.grid(list(x=GP$xcol, y=GP$yrow))
+      GPCoords = make.surface.grid(list(x=GP$xcol, y=GP$yrow))
     else {
-      GPcoords = attr(GP, "coords")
-      GPcoords = GPcoords[in.poly(GPcoords, domainWin$bdry[[1]]),]
+      GPCoords = attr(GP, "coords")
+      GPCoords = GPCoords[in.poly(GPCoords, domainWin$bdry[[1]]),]
     }
     
     #####get the associated marks for the PP at the GP
@@ -147,15 +173,11 @@ getKrigingPreds = function(PP, GP, predCoords = rbind(c(.49,.49)),
     
     # find index of GP coords that are the same as the PP and prediction coords
     #GPCoords = attr(GP, "coords")
-    findIndex = function(coordPair) {
-      coords.eq = function(latticePair) {
-        return(all(coordPair == latticePair))
-      }
-      eq = apply(GPcoords, 1, coords.eq)
-      return(which(eq))
+    findIndex = function(rCoords, gCoords) {
+      return(match(data.frame(t(rCoords)), data.frame(t(gCoords))))
     }
-    inds = unlist(apply(roundPPCoords, 1, findIndex))
-    indsPred = unlist(apply(roundPredCoords, 1, findIndex))
+    inds = findIndex(roundPPCoords, GPCoords)
+    indsPred = findIndex(roundPredCoords, GPCoords)
     
     #get PP and prediction marks from GP using the indices found above
     #PPmarks = t(matrix(GP$v, ncol=length(GP$xcol)))[inds]
@@ -165,7 +187,6 @@ getKrigingPreds = function(PP, GP, predCoords = rbind(c(.49,.49)),
     ##### Compute MLE
     # fixed parameters:
     kappa=1
-    lambda=10^(-4) #tausq=0
     covArgs=list(Covariance="Matern", nu=kappa)
     
     # initial covariance guesses:
@@ -179,15 +200,16 @@ getKrigingPreds = function(PP, GP, predCoords = rbind(c(.49,.49)),
 #                                    ndeps = rep(log(1.1), length(initCovParams)), 
 #                                    reltol=1e-05, maxit=10))
     theta.grid=seq(.05, .6, l=20)
+    PPcoords = jitter(PPcoords, amount=.01)
     opt = mKrig.MLE(x=PPcoords, y=PPmarks, lambda.profile=FALSE, 
-                             lambda = 0, par.grid=list(theta=theta.grid), 
+                             lambda = lambda, par.grid=list(theta=theta.grid), 
                              cov.fun="stationary.cov", cov.args=covArgs, m=1)
     phi.MLE = opt$cov.args.MLE$theta
     MLE.ind = which(opt$par.grid == phi.MLE)
     sigma.MLE = sqrt(opt$summary[MLE.ind, 5])
     
     #make final mKrig fit at optimal parameters
-    mKrigObj = mKrig(x=PPcoords, y=PPmarks, lambda = 0, m=1, 
+    mKrigObj = mKrig(x=PPcoords, y=PPmarks, lambda = lambda, m=1, 
                       cov.args=list(Covariance="Matern", theta=phi.MLE, nu=kappa))
     
     #make predictions at prediction locations:
@@ -195,6 +217,29 @@ getKrigingPreds = function(PP, GP, predCoords = rbind(c(.49,.49)),
     
     return(list(preds=preds, trueVals=predMarks, phi.MLE=phi.MLE))
 }
+
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+# functions for optimizing GP likelihood
+
+
+
+
+
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
 
 # fields  is a package for analysis of spatial data written for
 # the R software environment .
@@ -548,8 +593,6 @@ mKrig.MLE <- function(x, y, weights = rep(1, nrow(x)), cov.fun="stationary.cov",
               mKrig.args = list(...), lambda.best = lambda.best, lambda.MLE = lambda.best, 
               call = match.call(), lnLike.eval = lnLike.eval))
 }
-
-
 
 
 
