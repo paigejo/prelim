@@ -12,6 +12,11 @@
 
 \usepackage{color}
 \usepackage{ulem}
+\usepackage{subfig}
+\usepackage{lscape}
+\usepackage{rotating}
+\usepackage{placeins}
+
 \renewcommand{\emph}[1]{\textit{#1}}
 \newcommand{\vmdel}[1]{\sout{#1}}
 \newcommand{\vmadd}[1]{\textbf{\color{red}{#1}}}
@@ -29,12 +34,12 @@
 
 \section{Background and Motivation}
 \label{intro}
-\vmcomment{I would try to keep introduction as free from formulae as possible. Try to explain math in words.} \jpcomment{I removed some unnecessary math notation, although there's still a decent amount left.  I tried to emulate the paper to an extent starting off with the model, but I've tried to describe the meaning of the equations in words for the most part here.}  As discussed in \citet{diggle2010}, geostatistics considers stochastic processes varying in space.  In some applications the process, $S$, might be measured at a set of discrete locations, say $X = \set{x_1, x_2, ..., x_n}$ (often a subset of $\mathbb{R}^2$, as in \citet{diggle2010}).  In others, $S$ might be measured as a set of averages or a quantile function over different regions.  Here, we consider the following model for measured observations, $Y_i \in \mathbb{R}$, of the spatial process:
+As discussed in \citet{diggle2010}, geostatistics considers stochastic processes varying in space.  In some applications the process, $S$, might be measured at a set of discrete locations, say $X = \set{x_1, x_2, ..., x_n}$.  We often assume $X$ is a subset of $\mathbb{R}^2$, as in \citet{diggle2010}).  In other settings, $S$ might be measured as a set of averages or a quantile function over different regions.  Here, we consider the following model for measured observations, $Y_i \in \mathbb{R}$, of the spatial process:
 \begin{equation}
 Y_i = \mu + S(x_i) + Z_i,
 \label{model}
 \end{equation}
-where $i \in \set{1, ..., n}$, $\mu$ is the mean of the measured process, and the $Z_i$ are independent and identically distributed white noise with zero mean and variance $\tau^2$.  Here, the $Z_i$ can be interpreted as independent fine-scale measurement errors.  Note that in the above model we assume $S(x)$ is multivariate normal with zero mean.  Assuming a constant mean is not restrictive, since we can model $\mu$ as a function in space using a generalized linear regression framework, where errors are correlated due to spatial correlations in $S$.
+where $i \in \set{1, ..., n}$, $\mu$ is the mean of the measured process, and the $Z_i$ are independent and identically distributed white noise with zero mean and variance $\tau^2$.  Here, the $Z_i$ can be interpreted as independent fine-scale measurement errors.  Note that in the above model we assume $S(x)$ is multivariate normal with zero mean.
 \par
 Variance of the spatial process is usually defined in terms of a correlation function, $\rho$, depending on locations and a set of parameters, $\v{\theta}$:
 \begin{equation}
@@ -45,15 +50,15 @@ Here $\sigma^2$ is the variance of the field of interest.  Correlations in $S$ a
 \var{S(x) - S(x')} = \sigma^2 - \sigma^2 \rho(|x - x'| \ \vert \v{\theta}).
 \label{variogram}
 \end{equation}
-The positive definite function $\rho(\cdot  \vert \v{\theta})$ represents a correlation depending on distance conditional on the parameters $\v{\theta}$.  The variance in Eq. (\ref{variogram}) is called a variogram function.  \citet{diggle2010} uses the Mat\'{e}rn correlation function,
+The positive definite function $\rho(\cdot  \vert \v{\theta})$ represents a correlation depending on distance conditional on the parameters $\v{\theta}$.  The variance in (\ref{variogram}) is called a variogram.  \citet{diggle2010} uses the Mat\'{e}rn correlation function,
 $$ \rho(u \ \vert \ \phi, \kappa) = \frac{1}{2^{\kappa - 1} \Gamma(\kappa)} (u/\phi)^{\kappa} K_\kappa(u/\phi), $$
-where $\kappa > 0$ is a smoothness parameter, $\phi > 0$ is the spatial scale parameter, and $K_\kappa(\cdot)$ is the modified Bessel function of the second kind of order $\kappa$.  As noted in \citet{diggle2010}, the Mat\'{e}rn class of covariance functions is very flexible, containing exponential correlation as a special case when $\kappa = 0.5$, and is commonly used in geostatistics.  One difficulty when using a Mat\'{e}rn covariance model is that $\phi$ and $\kappa$ are sometimes difficult to estimate jointly, especially $\kappa$ \citep{diggle2010}.
+where $\kappa > 0$ is a smoothness parameter, $\phi > 0$ is the spatial scale parameter, and $K_\kappa(\cdot)$ is the modified Bessel function of the second kind of order $\kappa$.  As noted in \citet{diggle2010}, the Mat\'{e}rn class of covariance functions is commonly used and flexible, containing exponential correlation as a special case when $\kappa = 0.5$.  One difficulty when using a Mat\'{e}rn covariance model is that $\phi$ and $\kappa$ are sometimes difficult to estimate jointly, especially $\kappa$.  Hence, \citep{diggle2010} fixes $\kappa$ at $0.5$ in the inference.
 \par
-There are several advantages to modeling the variogram in a spatial model.  It provides a simple interpretation relating correlations and variance in $S$ over space as a function of distance.  In addition, it is easy to estimate assuming stationarity and under certain distributional assumptions of the sample locations.  A point cloud method of estimating empirical variogram works by plotting the distance between observations $y_i$ and $y_j$ versus $(y_i - y_j)^2/2$, which is the method of moments estimator for the variance based on two observations assuming the $y_i$ have zero expectation \citep{diggle2010}.  If the $y_i$ are not mean zero, we can simply subtract off $\mu$ from Eq. (\ref{model}).  Additionally, we could partition the possible distances between observation locations into sufficiently fine bins, and estimate the variance between differences of observation values when the corresponding distances are in any given bin.  Of course, if the bins are too fine, then our variogram estimates within each distance bin would be poor.  More advanced methods for estimating variograms are given in \citet[section 2.2]{chiles1999}, \citet{cressie1985}, and \citet[section 2.4]{cressie1991}.
+There are several advantages to modeling the variogram in a spatial model.  It provides a simple interpretation relating correlations and variance in $S$ over space as a function of distance.  In addition, it is easy to estimate assuming stationarity and under certain distributional assumptions of the sample locations.  A point cloud method of estimating empirical variogram works by plotting the distance between observations $y_i$ and $y_j$ versus $(y_i - y_j)^2/2$, which is the method of moments estimator (and nonparametric MLE) for the variance based on two observations assuming the $y_i$ have constant expectation \citep{diggle2010}.  If smoothed nonparametric empirical variogram estimates are desired, we could partition the possible distances between observation locations into bins, and estimate the variance between differences of observation values when the corresponding distances are in any given bin.  Examples of binned empirical variograms are given in Figure \ref{vgram}.
 \par % MAKE SURE TO DISCUSS KRIGING BLUE HERE BEFORE GETTING INTO PREFERENTIALITY!!!!!!!
-In classical geostatistical analysis, it is assumed that the observation locations are independent of the measured spatial field \citep{diggle2010}.  However, in the case of certain datasets, this might not be the case.  Consider a tornado chaser trying to measure tornado wind speeds.  It would be a terrible idea to try to infer average wind speeds in a region from the tornado chaser's wind speed data.  This is because the data they collect is much more likely to be in locations and times where the wind speeds are abnormally high.  This is what \citet{diggle2010} refers to as \emph{preferential sampling}.  Recent examples of scientific studies using preferential sampling involve sampling the distribution of a species in order to better determine its habitat \citep{patiReich2011} and polluatant and environmental hazard monitoring \citep{lee2011}, although preferential sampling occurs in more than just spatial statistics.  Consider doctor visit times, where patients might be more likely to visit when sick, or optimizing any function.  \citet{mccullagh2008} notes the importance of taking into account preferential sampling in Generalized Linear Models (GLMs).  \vmcomment{I would beef up literature review with connections to other fields, where something like preferential sampling comes up. For example, informative doctor visit times in medical statistics. The discussion of the paper may provide more connections.} \jpcomment{Just added some more references to uses of preferential sampling.}
+Classical geostatistical methods assume that the observation locations are independent of the measured spatial field \citep{diggle2010}.  However, in the case of certain datasets, this might not be the case.  Consider a tornado chaser trying to measure tornado wind speeds.  It would be a terrible idea to try to infer average wind speeds in a region from the tornado chaser's wind speed data since the data they collect is much more likely to be in locations and times where the wind speeds are abnormally high.  This is what \citet{diggle2010} refers to as \emph{preferential sampling}.  Recent examples of scientific studies using preferential sampling involve sampling the distribution of a species in order to better determine its habitat \citep{patiReich2011} and pollutant and environmental hazard monitoring \citep{lee2011}, although preferential sampling occurs in more than just spatial statistics.  Consider doctor visit times, where patients might be more likely to visit when sick, or optimizing any function.  \citet{mccullagh2008} notes the importance of taking into account preferential sampling in Generalized Linear Models (GLMs).
 \par
-In order to account for preferential sampling in a spatial statistical context, \citet{isaaks1988} and \citet{srivastava1989} proposed a non-ergodic variogram estimator as an alternative to classical estimators that they claimed was more robust to nonstationary and preferential data.  However, \citet{curriero2002} found that the non-ergodic estimators `possess no clear advantage' over the traditional estimators, and in fact performed worse in the cases they studied.  \citet{schlather2004} note that if $S$ is stationary, then $M_k(h) \defn E[S(x)^k \vert x, x+h \in X]$ is constant if the sampling process is non-preferential, since the expectation does not depend on $x+h$.  However the expectations might not be constant under preferential sampling.  \citet{schlather2004} then defines tests for preferentiality (assuming that $S$ is stationary) based on $M_1(h)$ and $M_2(h)$ using simulations under models assuming non-preferentiality.
+In order to account for preferential sampling in the context of spatial statistics, \citet{isaaks1988} and \citet{srivastava1989} proposed a non-ergodic variogram estimator as an alternative to classical estimators that they claimed was more robust to nonstationary and preferential data.  However, \citet{curriero2002} found that the non-ergodic estimators `possess no clear advantage' over the traditional estimators, and in fact performed worse in the cases they studied.  \citet{schlather2004} note that if $S$ is stationary, then $M_k(h) \defn E[S(x)^k \vert x, x+h \in X]$ is constant if the sampling process is non-preferential, since the expectation does not depend on $x+h$.  However the expectations might not be constant under preferential sampling.  \citet{schlather2004} then defines tests for preferentiality assuming that $S$ is stationary based on $M_1(h)$ and $M_2(h)$ using simulations under models assuming non-preferentiality.
 \par
 In addition to analyzing variations in observation \emph{values} over space, it is common to study the patterns in the observation \emph{locations}, as in \citet{diggle2010}.  Point processes are stochastic processes used to model random distributions of countably many points throughout a spatial domain (here we assume a bounded subset of $\mathbb{R}^2$) \citep{handbook}.  Common models for point processes include homogeneous or inhomogeneous Poisson processes, Cox processes, and Markov point processes \citep{handbook}.  A homogeneous Poisson process with rate (intensity) $\lambda > 0$ is a point process such that for bounded Borel sets $B, B' \subset \mathbb{R}^2$ the following conditions are satisfied:
 \begin{enumerate}
@@ -72,23 +77,23 @@ In the case of
 \Lambda(x) = \exp{\alpha + \beta S(x)},
 \label{LGCP}
 \end{equation}
-where $S(x)$ is the stochastic Gaussian process defined in Eq. (\ref{model}), the resulting point process is known as a log-Gaussian Cox process (LGCP) \citep{diggle2010}.
+where $S(x)$ is the stochastic Gaussian process defined in (\ref{model}), the resulting point process is known as a log-Gaussian Cox process (LGCP) \citep{diggle2010}.
 \par
 Just as the variogram can measure the level of correlation in observation values through space, the $K$-function can be helpful when analyzing the level of correlation in observation locations.  The $K$-function is defined as $K(s) = \lambda^{-1} E[N_0(s)]$ for homogeneous point processes, where $E[N_0(s)]$ denotes the expected number of points with distance $s$ from another point.  Under complete spatial randomness (CSR) (\emph{i.e.} if it is consistent with a homogeneous Poisson process model) the $K$ function has the form $K(s) = \pi s^2$, but when the empirical $K$ function is above or below $\pi s^2$, the data is indicative of clustering or repulsion respectively.  The $K$ function can be used in Monte Carlo goodness of fit tests for point process models \citep[Section 18.3]{handbook}.  It can also be used to test whether the data follows complete spatial randomness (CSR) or whether there is clustering or repulsion among the observation locations.  The $K$ function for LGCPs has the form:
 \begin{equation}
 K(s) = \pi s^2 + 2 \pi \int_0^s \gamma(u) u \ du
 \label{Kfun}
 \end{equation}
-where $\gamma(u) = \exp{\beta^2 \sigma^2 \rho(u ; \phi, \kappa)} - 1$ is the covariance of $\Lambda$, $\cov{\Lambda(x), \Lambda(x + u)}$ under the parameterization of Eq. (\ref{LGCP}).
+where $\gamma(u) = \exp{\beta^2 \sigma^2 \rho(u ; \phi, \kappa)} - 1$ is proportional to the covariance of $\Lambda$, $\cov{\Lambda(x), \Lambda(x + u)}$ under the parameterization of (\ref{LGCP}).  Derivation of (\ref{Kfun}) is given in Appendix A in Sec. \ref{deriveKFun}.
 \par
 The main contribution of \citet{diggle2010} is the authors' use of a LGCP model for sample locations in conjunction with the spatial process model in Eq \ref{model} for data being measured.  They give a relatively simple parameter fitting procedure by maximizing a tractable Monte Carlo likelihood and give examples of the dangers that could occur under a `naive' geostatistical analysis that assumed non-preferentiality.  Further, they give new tests for preferentiality and compute the results of a Monte Carlo goodness of fit based on the $K$-function under their proposed model.
 
 \section{Methods}
-\citet{diggle2010} studies lead conentration data in Gallicia, a region in northern Spain.  The data, with sample locations shown in Fig. \ref{sampleLocs}, is sampled in October 1997 and July 2000.  In 1997, the sample locations are concentrated in the north, whereas in 2000 the sample locations are on a relatively regular lattice.  There are 63 samples in 1997 and 132 in 2000 with an apparent mean-variance relationship that suggested the use of a log transformation of the data.  There appear to be two outliers in the samples from 2000, which the authors of \citet{diggle2010} replace with the mean of the rest of the log-transformed observations from that year.  Note that all data used in this report is available at \verb|www.lancs.ac.uk/staff/diggle/|.
+\citet{diggle2010} studies lead conentration data in Gallicia, a region in northern Spain.  The data, with sample locations shown in Fig. \ref{sampleLocs}, is sampled in October 1997 and July 2000.  In 1997, the sample locations are concentrated in the north, whereas in 2000 the sample locations are on a relatively regular lattice.  There are 63 samples in 1997 and 132 in 2000 with an apparent mean-variance relationship that suggested the use of a log transformation of the data.  There appear to be two outliers in the samples from 2000, which the authors of \citet{diggle2010} replace with the mean of the rest of the log-transformed observations from that year.  All data used in this report is available at \verb|www.lancs.ac.uk/staff/diggle/|.
 
 \begin{figure}
 \centering
-\image{width=.6\linewidth}{sampling_locations.pdf}
+\image{width=.5\linewidth}{sampling_locations.pdf}
 \caption{Lead concentration data sample locations for 1997 and 2000.}
 \label{sampleLocs}
 \end{figure}
@@ -120,94 +125,92 @@ Maximum & 9.51 & 6.00 & 2.25 & 2.16  \\
  
  % unit square simulations: packages used, sampling schemes, variogram estimation, Kriging prediction
 \subsection{Unit square simulations}
-In addition to using lead concentration data, \citet{diggle2010} simulates data on the unit square under three different sampling schemes in order to test for the effects of preferential sampling.  In the first sampling scheme, points are sampled from the unit square uniformly, or equivalently, under a homogeneous Poisson process.  In the second, samples are taken under a clustered scheme, where sample locations are chosen via a preferential model with respect to a response that is independent of that being measured but with identical statistical properties.  In the third and final sampling scheme, the locations are chosen preferentially.  In the case of the clustered and preferential sampling methods, we chose a random intensity from a LGCP, $\Lambda(x) = \exp{4 + 2 S(x)}$, where $x$ is a location on the unit square, $ES(x) = 0$, and $\var{S(x)} = 1.5$.  The values of the response are given by $4 + S(x)$, and the correlation function of $S(x)$ is Mat\'{e}rn with range $\phi=.3$ and smoothness $\kappa=1$.
+In addition to studying lead concentration data, \citet{diggle2010} simulates data on the unit square under three different sampling schemes to determine the effects of preferential sampling on classical methods in geostatistics.  In the first sampling scheme, points are sampled from the unit square uniformly, or equivalently, under a homogeneous Poisson process.  In the second, samples are taken under a clustered scheme, where sample locations are chosen via a preferential model with respect to a response that is independent of that being measured but with identical statistical properties.  In the third and final sampling scheme, the locations are chosen preferentially.  In the case of the clustered and preferential sampling methods, we chose a random LGCP intensity, $\Lambda(x) = \exp{4 + 2 S(x)}$, where $x$ is a location on the unit square, $ES(x) = 0$, and $\var{S(x)} = 1.5$.  The values of the response are given by $4 + S(x)$, and the correlation function of $S(x)$ is Mat\'{e}rn with range $\phi=.3$ and smoothness $\kappa=1$.  Examples of the sampling schemes are shown in Figure \ref{sampleSchemes}.
+
+\begin{sidewaysfigure}[ht]
+\subfloat[][]{
+\image{width=2.9in}{unifScheme.png}
+\image{width=2.9in}{prefScheme.png}
+\image{width=3.27in}{clustScheme.png}
+}
+\caption{(a) Uniform, (b) preferential, and (c) clustered sampling schemes (the black dots) on the unit square plotted with the associated stochastic process $\mu + S(x)$.  Here $\mu=4$, $\var{S}=1.5$, and $S$ is mean zero with Mat\'{e}rn covariance structure with range $\phi=0.3$ and smoothness $\kappa=1$.}
+\label{sampleSchemes}
+\end{sidewaysfigure}
+
 \par
-We estimate variograms using the point-cloud based method of moment estimator discussed in Sec. \ref{intro} with functions from the \verb|fields| package.  We generate 500 simulations under each sampling scheme and use them to estimate the variogram bias and standard deviations under each scheme.  Note that we ensure that exactly 100 observations are sampled in each simulation using independent and with equal probability random thinning for the cluster and preferentially sampled data, since this process holds relative intensities constant across the spatial domain equal as shown in \citet{diggle2013}.
+I compute the binned empirical variogram estimator discussed in Sec. \ref{intro} using the \verb|fields| package.  I generate 500 simulations under each sampling scheme and use them to estimate the variogram bias and standard deviations under each scheme.  I ensure that exactly 100 observations are sampled in each simulation using independent and with equal probability random thinning for the cluster and preferentially sampled data, since this process holds relative intensities constant across the spatial domain equal as shown in \citet{diggle2013}.
 \par
-In order to gauge the affect of each sampling methodology on the classical Kriging predictor, we compute the conditional mean  $E[S(x) \vert \v{Y}]$ at $x=(.49,.49)$ for each simulation, comparing bias and standard deviations under each sampling scheme.  When calculating the Kriging predictor we use two models.  In the first, we use maximum likelihood to estimate parameters under the classical geostatistical model ignoring preferentiality.  In the second, we set the simulation model parameters to be those of the maximum likelihood estimates of the preferential model parameters for the 1997 data under the joint model obtained by \citet{diggle2010}: $\mu=1.515$, $\sigma^2 = 0.138$, $\phi=.313$, $\kappa=0.5$, $\beta = -2.198$, and $\tau^2 = 0.059$.  We then set the plug-in parameters used when generating the ordinary kriging predictor to be the parameters used in the simulations.
+In order to gauge the affect of each sampling methodology on the classical predictor, I compute the conditional mean  $E[S(x) \vert \v{Y}]$ at $x=(.49,.49)$ for each simulation, comparing bias and standard deviations under each sampling scheme.  When calculating the predictor I use two models.  In the first, I use maximum likelihood to estimate parameters under the classical geostatistical model ignoring preferentiality.  In the second, I set the simulation model parameters to be those of the preferential model MLEs for the 1997 data under the joint model obtained by \citet{diggle2010}: $\mu=1.515$, $\sigma^2 = 0.138$, $\phi=.313$, $\kappa=0.5$, $\beta = -2.198$, and $\tau^2 = 0.059$.  I then set the plug-in parameters used when generating the draws from the non-preferential predictive distribution to be the parameters used in the simulations.
  
 \subsection{Model inference}
  % likelihood evaluation: lik decomp, MC approximations, evaluating each part of preferential likelihood, simulating Sj
  % parameter fitting/optimization methods
-In order to fit the parameters of the classical and preferential models, we use maximum likelihood.  The joint likelihood of $S$, $X$, and $Y$ can be written
+In order to fit the parameters of the classical and preferential models, I use maximum likelihood.  The joint likelihood of $S$, $X$, and $Y$ can be written
 \begin{equation}
 f_{S,X,Y}(s,x,y) = f_S(s) f_{X \vert S}(x \vert s) f_{Y \vert S, X}(y \vert s, x)  = f_S(s) f_{X \vert S}(x \vert s) f_{Y \vert S(X)}(y \vert s(x))
 \label{likFactor}
 \end{equation}
-where $S(X) = \set{S(x_1, ..., S(x_n)}$.  In the case of the classical model,Êwhere $S \indep X$, then the joint distribution of $S$, $X$, and $Y$ is:
+where $S(X) = \set{S(x_1), ..., S(x_n)}$.  In the case of the classical model,Êwhere $S \indep X$, then the joint distribution of $S$, $X$, and $Y$ is:
 $$ f_{S,X,Y}(s,x,y) = f_S(s) f_{X}(x) f_{Y \vert S}(y \vert s) $$
 Hence, under no preferentiality, we can marginalize $X$ to get
 $$ f_{S,Y}(s,y) = f_S(s) f_{Y \vert S}(y \vert s) $$
-In fact, classically the likelihood that is optimized is $f_{S \vert Y}(s \vert Y)$, since from a Frequentist perspective $f_Y(y) = \ind_{(Y = y)}$.  Under preferentiality, however, we cannot simplify Eq. (\ref{likFactor}) in the same way since we cannot ignore the dependence of $S$ on $X$ in the $S(X)$ term.  However, \citet{diggle2010} shows that the joint likelihood is still tractable.  Let $S = \set{S_0, S_1}$ be that values of $S$ over a finely spaced regular lattice covering the spatial domain, where $S_0 = S(X)$ is the values of $S$ at the observation locations whereas $S_1$ is the values of $S$ at other locations on the lattice.  The authors note that, where $\theta$ is the vector of model parameters, 
+In fact, classically the likelihood that is optimized is $f_{S \vert Y}(s \vert Y)$, since the observations are fixed so $f_Y(y) = \ind_{(Y = y)}$.  Under preferentiality, however, we cannot simplify (\ref{likFactor}) in the same way since we cannot ignore the dependence of $S$ on $X$ in the $S(X)$ term.  However, \citet{diggle2010} shows that the joint likelihood is still tractable.  Let $S = \set{S_0, S_1}$ be that values of $S$ over a finely spaced regular lattice covering the spatial domain, where $S_0 = S(X)$ is the values of $S$ at the observation locations whereas $S_1$ is the values of $S$ at other locations on the lattice.  The authors note that, where $\theta$ is the vector of model parameters, the likelihood can be written
 \bal
-L(\theta) &= f_{X,Y}(x, y) = \int f_S(s) f_{X \vert S}(x \vert s) f_{Y \vert S, X}(y \vert s, x) \ ds \\
-&= \int f_{X \vert S}(x \vert s) f_{Y \vert S, X}(y \vert s, x) \frac{f_{S \vert Y}(s \vert y)}{f_{S \vert Y}(s \vert y)} f_S(s) \ ds \\
-&= \int f_{X \vert S}(x \vert s) f_{Y \vert S_0}(y \vert s_0) \frac{f_{S \vert Y}(s \vert y)}{f_{S_0 \vert Y}(s_0 \vert y) f_{S_1 \vert S_0 , Y}(s_1 \vert s_0, y)} f_{S_0}(s_0) f_{S_1 \vert S_0}(s_1 \vert s_0) \ ds \\
-&= \int f_{X \vert S}(x \vert s) \frac{f_{Y \vert S_0}(y \vert s_0)}{f_{S_0 \vert Y}(s_0 \vert y)} f_{S \vert Y}(s \vert y) f_{S_0}(s_0) \ ds \\
-&= E_{S \vert Y}\brack{f_{X \vert S}(x \vert s) \frac{f_{Y \vert S_0}(y \vert s_0)}{f_{S_0 \vert Y}(s_0 \vert y)} f_{S_0}(s_0)}
+L(\theta) &= E_{S \vert Y}\brack{f_{X \vert S}(x \vert s) \frac{f_{Y \vert S_0}(y \vert s_0)}{f_{S_0 \vert Y}(s_0 \vert y)} f_{S_0}(s_0)}
 \eal
-This can be approximated with the Monte Carlo estimate
+This is derived in the Appendix in Sec. \ref{deriveLik} and can be approximated with the Monte Carlo estimate
 \begin{equation}
 L(\theta) \approx \frac{1}{m} \sum_{j=1}^m f_{X \vert S}(x \vert S_j) \frac{f_{Y \vert S_0}(y \vert S_{0j})}{f_{S_0 \vert Y}(S_{0j} \vert y)} f_{S_0}(S_{0j})
 \label{lik}
 \end{equation}
-where $S_j = \set{S_{0j}, S_{1j}}$ is the $j$th simulation of $S$ conditional on $Y$, and $S_{0j}$ are the values of $S_j$ at the observation locations.  In order to simulate $S_j$, \citet{diggle2010} suggests the following.  First, put $X^* = \set{x_1^*, ..., x_N^*}$ be the $N$ locations of the points on the regular lattice over the domain, and let $C$ be the $n \times N$ matrix where the $i$th row of $C$ has $N-1$ 0's and a single 1 identifying the index of $x_i$ in $X^*$ (hence, $X = C X^*$).  Given the parameters, $\theta$, we have $S \sim \MVN{0, \Sigma(\theta)}$ and $Y \sim \MVN{\mu, \Sigma_0(\theta)}$ where $\Sigma_0(\theta) = C \Sigma(\theta) C' + \tau^2 I$.  From here, we will drop $\theta$ from the notation, noting that the covariance matrices $\Sigma$ and $\Sigma_0$ still do depend on the parameters, $\theta$.  Then if we simulate $S$ marginally and $Z \iid \MVN{0, \tau^2 I}$, \citet{diggle2010} simulates $S_j$ with the formula
+where $S_j = \set{S_{0j}, S_{1j}}$ is the $j$th simulation of $S$ conditional on $Y$, and $S_{0j}$ are the values of $S_j$ at the observation locations.  In order to simulate $S_j$, \citet{diggle2010} suggests the following.  First, let $X^* = \set{x_1^*, ..., x_N^*}$ be the $N$ locations of the points on the regular lattice over the domain, and let $C$ be the $n \times N$ matrix where the $i$th row of $C$ has $N-1$ 0's and a single 1 identifying the index of $x_i$ in $X^*$ (hence, $S_0 = C S$).  Given the parameters, $\theta$, we have $S \sim \MVN{0, \Sigma(\theta)}$ and $Y \sim \MVN{\mu, \Sigma_0(\theta)}$ where $\Sigma_0(\theta) = C \Sigma(\theta) C' + \tau^2 I$.  From here, we will drop $\theta$ from the notation, noting that the covariance matrices $\Sigma$ and $\Sigma_0$ still do depend on the parameters, $\theta$.  Then if we simulate $S$ marginally and $Z \iid \MVN{0, \tau^2 I}$, \citet{diggle2010} simulates $S_j$ with the formula
 \begin{equation}
 S_j \defn S + \Sigma C' \Sigma_0^{-1}(y - \mu + Z - CS)
 \label{Sj}
 \end{equation}
-This is based on \citet[Chapter 2]{rueHeld2005}, and also on the posterior sampling results in \citet{eidsvik2009}.  It can easily be verified using the `sweep' operator from \citet[Chapter 2]{rueHeld2005}.  Since the above $Z$ vector is independent of $S$, they are jointly normal.  Their conditional is therefore normal with mean
-$$ \mu_{S \vert Y} = ES + \Sigma C' \Sigma_0^{-1}(y - \mu - ES_0) = \Sigma C' \Sigma_0^{-1}(y - \mu) $$
-and variance
-$$ \Sigma_{S \vert Y} = \Sigma - \Sigma C' \Sigma_0^{-1} C \Sigma $$
-It is easy to verify that Eq. (\ref{Sj}) is normal with the correct mean and variance.  Note that this formula does not require the inversion of $\Sigma$, which is the much larger size of $N \times N$.  In fact, using the efficient Cholesky decomposition and forward and backsolve algorithms we can even avoid inversion of $\Sigma_0$.  Although this algorithm does require sampling from the marginal distribution of the $N$-dimension vector $S$, this can be performed efficiently using the circulant embedding algorithm, which requires only order $\mathcal{O}(N^2)$ floating point operations \citep{woodChan1994}.  We generate samples from the marignal distribution of $S$ using the \verb|RandomFields| package in \verb|R|.
+This is based on \citet[Chapter 2]{rueHeld2005}, and also on the posterior sampling results in \citet{eidsvik2009}.  I verify the formula along with deriving the terms in the Monte Carlo likelihood in the Appendix in Sec. \ref{deriveLikTerms}.  Note that this formula does not require the inversion of the $N \times N$ matrix $\Sigma$.  In fact, using the efficient Cholesky decomposition and forward and backsolve algorithms we can even avoid direct inversion of $\Sigma_0$.  We can also efficiently sample the $N$-dimension vector $S$ using the circulant embedding algorithm, which requires only order $\mathcal{O}(N^2)$ floating point operations \citep{woodChan1994}.  In this analysis, I draw from the marignal distribution of $S$ using the \verb|RandomFields| package in \verb|R|.
 \par
-Once the shared latent model likelihood is factored into the form given in Eq. (\ref{lik}), evaluation of the likelihood becomes tractable with the simulation method given above.  We evaluate the random intensity on our grid, $X^*$, as $\Lambda(x) = \exp{\alpha + \beta S_j}$ where $\alpha$ is chosen as the maximum likelihood estimator conditional on the other parameters $\theta = (\mu_{97}, \mu_{00}, \ \sigma, \ \tau, \ \phi, \ \beta)$.  Here $\mu_{97}$ is the mean for the 1997 log-transformed response and $\mu_{00}$ is the mean log response for the 2000 data.  Conditional on these, $\h{\alpha} = \log(n/\text{Area}) - \h{\beta}^2 \hat{\sigma}^2/2$, where $n$ is the number of 1997 samples and Area is the area of the domain.  This is based on the expectation of a Lognormal distribution (due to the exponentiation of $S$, which is Gaussian), and the MLE for Poisson distribution parameter $\lambda$.  This estimator for $\alpha$ is both the method of moments estimator and the MLE due to MLE invariance conditional on $\theta$.  Using our lattice-based approximation of $\Lambda(x)$, we apply the inhomogeneous Poisson process likelihood given in \citet{diggle2013}:
-$$ L(\Lambda \vert X) = \prodi \Lambda(x_i) \paren{\int \Lambda(x) \ dx}^{-n} $$
-where the integral is taken over the entire domain and is calculated numerically after computing $\Lambda(x)$ over $X^*$.
+Once the shared latent model likelihood is factored into the form given in (\ref{lik}), evaluation of the likelihood becomes tractable with the simulation method given above.  I evaluate the random intensity on the grid, $X^*$, as $\Lambda(x) = \exp{\alpha + \beta S_j}$ where $\alpha$ is chosen as the maximum likelihood estimator conditional on the other parameters $\theta = (\mu_{97}, \mu_{00}, \ \sigma, \ \tau, \ \phi, \ \beta)$.  Here $\mu_{97}$ is the mean for the 1997 log-transformed response and $\mu_{00}$ is the mean log response for the 2000 data.  Using our lattice-based approximation of $\Lambda(x)$, I apply the inhomogeneous Poisson process likelihood:
+$$ L(X \vert \Lambda) = \prodi \Lambda(x_i) \paren{\int \Lambda(x) \ dx}^{-n} $$
+where the integral is taken over the entire domain and is calculated numerically after computing $\Lambda(x)$ over $X^*$.  The other portions of the likelihood can be calculated using Gaussian densities derived in Sec. \ref{deriveLikTerms}.
 \par
-The $f_{Y \vert S_0}$ and $f_{S_0 \vert Y}$ portions of the likelihood can be calculated using multivariate normal densities.  Conditional on $S_0$, the $Y_i$ are distributed $Y_i \iid \Norm{\mu + S(x_i), \tau^2}$.  On the other hand, $S \vert Y$ follows a correlated multivariate normal structure given by 
-\bal
-S \vert Y &\sim \MVN{\Sigma C' \Sigma_0^{-1} (Y - \mu), \Sigma - \Sigma C' \Sigma_0^{-1} C \Sigma}
-\eal
-So the distribution of $S_0 \vert Y$ is
-\bal
-S_0 \vert Y &\sim \MVN{C \Sigma C' \Sigma_0^{-1} (Y - \mu), C \Sigma C' - C \Sigma C' \Sigma_0^{-1} C \Sigma C'} \\
-&\stackrel{d}{=} \MVN{C \Sigma C' \Sigma_0^{-1} (Y - \mu), \tau^2(I - \tau^2 \Sigma_0^{-1})}
-\eal
-Note that the last equality follows after some simplification from the fact that $C \Sigma C' = \Sigma_0 - \tau^2 I$.  Similarly, the $f_{S_0}(S_{0j})$ term in Eq. (\ref{lik}) can be calculated using the fact that, marginally, $S_0 \sim \MVN{0, C \Sigma C'}$.
+I use the Nelder-Mead simplex algorithm \citep{nelderMead} for likelihood maximization with 10,000 Monte Carlo iterations in our preferential likelihood approximation.  I fit parameters under a standard geostatistical model for 1997 and 2000 separately before fitting a joint model.  I do the same under the preferential model, noting that the year 2000 data is not preferential since it is composed of regularly spaced observations on a grid.  The optimization is performed using the \verb|optim| R function, and I calculate standard errors and the correlation matrix for the MLEs under the joint preferential model by computing the Hessian at the optimum.
 \par
-We use the Nelder-Mead simplex algorithm \citep{nelderMead} for likelihood maximization with 10,000 Monte Carlo iterations in our preferential likelihood approximation (\textbf{Note: will have to update this when I find out how many iterations my code can achieve in a reasonable amount of time.  Right now 10,000 iterations would take on the order of days due mainly to inefficient calling of the circulant embedding function in R, it seems...}).  We fit parameters under a standard geostatistical model for 1997 and 2000 separately before fitting a joint model.  We do the same under the preferential model, noting that the year 2000 data is not preferential since it is composed of regularly spaced observations on a grid.  The optimization is performed using the \verb|optim| function, and we calculate standard errors and the correlation matrix for the MLEs under the joint preferential model by computing the Hessian at the optimum.
-\par
-As in \citet{diggle2010}, data from 1997 is assumed to be independent from data measured in 2000.  This seems somewhat problematic, although it is unclear that the additional complexity of modeling that would be required for modeling intertemporal dependence would substantially improve the results, and it would complicate the likelihood evaluation.  Since the authors found significant differences between concentrations in 1997 and 2000, the assumption is slightly less problematic.
-
-%include factorial design stuff
+As in \citet{diggle2010}, data from 1997 is assumed to be independent from data measured in 2000.  This is somewhat problematic, although it is unclear that the additional complexity of modeling that would be required for modeling intertemporal dependence would substantially improve the results, and it would complicate the likelihood evaluation.  Since there are significant differences between concentrations in 1997 and 2000, the assumption is slightly less problematic.
 
 \subsection{Goodness of fit}
  % goodness of fit: K functions, Monte Carlo tests
- As mentioned in Sec. \ref{intro}, $K$-functions are useful tools for goodness of fit tests.  We perform a goodness of fit test on the preferential model by comparing the empirical $K$-function of the 1997 data with th theoretical $K$-function of an LGCP given by the parameters fit under the joint preferential model for the 1997 and 2000 data.  Using the \verb|envelope| function in the \verb|spatstat| package, we generate 99 simulations of the fit LGCP.  Using the test statistic
-$$ T = \int_0^{0.25} \frac{\paren{\h{K}(s) - K(s)}^2}{v(s)} \ ds $$
-where $v(s)$ is the variance of $\h{K}(s)$ estimated from the 99 simulations, we compare the rank of the empirical test statistic to the test statistic calculated from each ofthe 99 simulations.  The $p$-value for the test is the rank (from 1 to 100) out of the 100 calculated test statistics divided by 100 \citep{handbook}.
+ As mentioned in Sec. \ref{intro}, $K$-functions are useful tools for goodness of fit tests.  I perform a goodness of fit test on the preferential model by comparing the empirical $K$-function of the 1997 data with th theoretical $K$-function of an LGCP given by the parameters fit under the joint preferential model for the 1997 and 2000 data.  Using the \verb|envelope| function in the \verb|spatstat| package, I generate 99 simulations of the fit LGCP.  Using the test statistic
+\begin{equation}
+T = \int_0^{0.25} \frac{\paren{\h{K}(s) - K(s)}^2}{v(s)} \ ds
+\label{envelopeTest}
+\end{equation}
+where $v(s)$ is the variance of $\h{K}(s)$ estimated from the 99 simulations, I compare the rank of the empirical test statistic to the test statistic calculated from each ofthe 99 simulations.  The $p$-value for the test is the rank (from 1 to 100) out of the 100 calculated test statistics divided by 100 \citep{handbook}.
  
  % final predictions for 1997
 \subsection{Predictions}
- After the parameters are fit under the classical and preferential models we generate 10,000 simulations of $\exp{S(x)}$, the untransformed lead concentrations, conditional on $Y$ for the 1997 data under each model.  Normally, the conditional mean would be used as the predictor, but skewness in the distribution of the untransformed lead concentrations makes percentile comparisons between the models preferred.  We therefore compare the 5\%, 50\%, and 95\% predictive distributions.  In addition, we compare kernel density estimates of the proportion of Gallicia with lead concentration exceeding 3, 5, and 7 $\mu$g (g dry weight)$^{-1}$ between the two models.
+ After the parameters are fit under the classical and preferential models I generate 10,000 simulations of $\exp{S(x)}$, the untransformed lead concentrations, conditional on $Y$ for the 1997 data under each model.  Normally, the conditional mean would be used as the predictor, but skewness in the distribution of the untransformed lead concentrations makes percentile comparisons between the models preferred.  I therefore compare the 5\%, 50\%, and 95\% predictive distributions.  In addition, I compare estimates of the proportion of Gallicia with lead concentration exceeding 3, 5, and 7 $\mu$g (g dry weight)$^{-1}$ between the two models.
  
+\FloatBarrier
+
 \section{Results}
  
 \subsection{Unit square simulations}
+\label{unitSquare}
+Figure \ref{VGbias} shows the bias of the classical empirical variogram estimates based on the 500 simulations on the unit quare.  While the uniform and clustered variograms do not appear significantly biased, the preferential sampling scheme seems to cause substantial bias in the variogrm estimates.  The magnitude of the bias increases as a function of distance.  In addition, the standard deviation of the preferential estimate of the variogram is smaller than the non-preferential clustered sampling scheme.  Hence, preferentiality is not accounted for, then then relatively small standard deviation could lead to a false sense of security in the variogram estimates.
 
-\subsection{Model inference}
-
-\subsection{Goodness of fit}
-
-\subsection{Predictions}
+\begin{figure}
+\centering
+\image{width=6in}{VGbias.pdf}
+\caption{Based on 500 simulations with 100 observations each on the unit square, plotted are (a) estimated empirical variogram bias $\pm$2 standard errors as functions of distance,$u$, for the uniform (solid), clustered (dashed) and preferential (dotted) sampling schemes and (b) standard deviations of the empirical variogram estimates.}
+\label{VGbias}
+\end{figure}
 
 \begin{table}[ht]
 \centering
 \begin{tabular}{|r|cccc|}
 \hline
-\emph{Model} &  \emph{Paramer} &  \multicolumn{3}{c|}{\emph{Confidence intervals}}  \\ \cline{3-5}
+\emph{Model} &  \emph{Parameter} &  \multicolumn{3}{c|}{\emph{Confidence intervals}}  \\ \cline{3-5}
 & & \emph{Completely random} & \emph{Preferential} & \emph{Clustered} \\
 \hline
 1 & Bias & (-0.029,  0.038) & (0.956, 1.123) & (-0.074, 0.064) \\ 
@@ -217,9 +220,114 @@ where $v(s)$ is the variance of $\h{K}(s)$ estimated from the 99 simulations, we
 \hline
 \end{tabular}
 \caption{95\% Confidence intervals for the given parameters under the given models and sampling schemes.}
-\label{dataStats}
+\label{simKriging}
 \end{table}
- 
+
+\subsection{Model inference}
+\label{inference}
+Under a non-preferential model initialized at reasonable but naive values, I estimate the model parameters under seperate models for the two years and also jointly, assuming a shared correlation range $\phi$, as well as shared variance parameters $\sigma^2$ and $\tau^2$.  The fit MLEs are given in Table \ref{paramEstimates}.  While \citet{diggle2010} do not give parameter estimates to compare these to, the MLEs fit in this analysis from the joint non-preferential model are very similar to the estimates from \citet{diggle2010} using the joint preferential model, which are $\h{\mu}_{97} = 1.51$, $\h{\mu}_{00} = 0.76$, $\h{\sigma}^2=0.14$, $\h{\phi} = 0.31$, and $\h{\tau}^2 = 0.06$ (and $\h{\beta} = -2.20$).  The joint model MLE estimates and standard errors are shown in Table \ref{corrMat} along with a correlation matrix computed using the hessian fit using the \verb|optim| function in R.  Since the parameters are optimized on a log scale, the log scale standard errors are transformed to the linear scale using the delta method.
+\par
+As in \citet{diggle2010}, I find that the fit parameters for the two years are somewhat different.  However, unlike in \citet{diggle2010}, when using a likelihood ratio test to determine if differences in the parameters between the years warrant separate models, I get a $p$ value of 0.007 under 3 degrees of freedom.  This suggests that a joint model is problematic.  The difference between these results and \citet{diggle2010} is likely due to outliers in the 2000 log-lead observations, and is further discussed in the Appendix in Sec. \ref{diffs}.  Since each separate year better identifies complementary sets of parameters, a joint model may better estimate some paramters in spite of the results from the likelihood ratio test to fit a generalizeable model.  Interestingly, while preferentiality seems to bias variogram estimates downard to smaller variances, the 1997 data has larger variance than the 2000 data as evidenced by Figure \ref{vgram}.  This further suggests that a joint model might not fit the data well.  It may however be necessary in order for the preferential model to be well identified.
+\par
+\begin{table}[ht]
+\centering
+\begin{tabular}{ccccccccc}
+\hline
+\emph{Parameter} &  \emph{Estimate} & \emph{Standard error} & & \multicolumn{5}{c}{\emph{Correlation matrix}}  \\ 
+\hline
+$\mu_{97}$ & 1.55 & 0.018 &  & 1.00 & 0.00 & 0.02 & -0.00 & -0.02 \\ 
+$\mu_{00}$ & 0.73 & 0.014 & &  & 1.00 & 0.10 & 0.20 & 0.07 \\ 
+$\sigma$ & 0.37 & 0.006 & & &  & 1.00 & 0.39 & -0.37 \\ 
+$\phi$ & 0.31 & 0.039 & &  &  &  & 1.00 & 0.47 \\ 
+$\tau$ & 0.23 & 0.005 & & &  & &  & 1.00 \\ 
+\hline
+\end{tabular}
+\caption{Parameter estimates and uncertainties calculated using the fit hessian and the delta method for the non-preferential joint model.  Note that the $\sigma$, $\phi$, and $\tau$ parameters were estimated on a log scale, and while the estimate and standard error columns account for this, the correlation matrix is has entries with respect to the parameters' log-transformed values.}
+\label{corrMat}
+\end{table}
+
+\begin{figure}
+\centering
+\subfloat[][]{\image{height=4in}{vario97.pdf}}
+\subfloat[][]{\image{height=4in}{vario00.pdf}}
+\caption{Empirical and theoretical variograms fit using maximum likelihood for the (a) 1997 log-lead concentration data and (b) 2000 log-lead concentration data with outliers replaced by the mean of the rest of the 2000 data.}
+\label{vgram}
+\end{figure}
+
+\subsection{Goodness of fit}
+The envelope from the empirical and theoretical $K$-functions from 99 simulations from the theoretical LGCP model under the MLE plug-in parameters is shown along with the empirical $K$-function from the 1997 data in Figure \ref{envelope}.  The results are comparable to Figure 6 from \citet{diggle2010}, although instead of the empirical $K$ function from the 1997 data being just outside of the simulation envelope, mine is just within.  Using the Monte Carlo test statistic defined in (\ref{envelopeTest}), I get a $p$-value of 0.07.  This implies that up to distances of 25 kiliometers, the LGCP model is decent at capturing clustering behavior in the observation locations due to preferentiality.  While the preferential model accurately shows that the $K$-function is above what would be expected under homogeneous sampling (corresponding to the horizontal line at 0 in Figure \ref{envelopeTest}), there may be additional sources of clustering not accounted for by the LGCP model.
+
+\begin{figure}
+\centering
+\image{width=5in}{envelope.pdf}
+\caption{Empirical $K$-function (black) plotted against the fitted theoretical $K$-function (blue).  The gray envelope is generated using 99 simulations from the log-Gaussian Cox Process model.}
+\label{envelope}
+\end{figure}
+
+\subsection{Predictions}
+Predictions for the 1997 lead-concentration field are given using the 10,000 draws from the predictive distribution using the plug-in joint preferential and non-preferential MLEs.  The 5th, 50th, and 95th quantiles are shown in Figure \ref{preds}, and the predicted areal proportions exceeding 3, 5, and 7 $\mu g$/($g$ dry weight) lead concentrations are given in Figure \ref{arealProp}.  I generate one set of predictions using the parameters I fit from the standard, non-preferential joint model, while the other set is uses the preferential model MLEs from \citet{diggle2010}.  As noted in Sec. \ref{inference}, these sets of parameters are very similar.  It should therefore be unsurprising that the results look nearly identical.
+\par
+It is important to note that, as in \citet{diggle2010}, I draw predictions from the non-preferential predictive distribution condtional on the plug-in parameters by simulating the $S_j$'s defined in (\ref{Sj}).  This is problematic, since this predictive distribution is different from the true preferential predictive distribution, which would incorporate the information from the LGCP model.  Although the true preferential predictive distribution ($f_{\v{S} \vert \v{X}, \v{Y}}(\v{s} \vert \v{x}, \v{y})$) is not used in \citet{diggle2010}, I have attempted to derive it in the Appendix in Sec. \ref{truePred}.  While the results seem promising, they are currently incomplete.
+
+\begin{figure}
+\centering
+\subfloat[][]{\image{width=2.3in}{over3.pdf}}
+\subfloat[][]{\image{width=2.3in}{over5.pdf}}
+\subfloat[][]{\image{width=2.35in}{over7.pdf}}
+\caption{Areal proportion of predicted 1997 lead concentration exceeding (a) 3, (b) 5, and (c) 7 $\mu g/(g$ dry weight).  Results are given for both the non-preferential (dashed lines) and preferential (solid lines) prediction.}
+\label{arealProp}
+\end{figure}
+
+\begin{sidewaysfigure}[ht]
+\subfloat[][]{
+\image{width=2.8in}{pref5.png}
+\image{width=2.8in}{pref50.png}
+\image{width=3.4in}{pref95.png}
+}
+\\
+\subfloat[][]{
+\image{width=2.8in}{np5.png}
+\image{width=2.8in}{np50.png}
+\image{width=3.4in}{np95.png}
+}
+\caption{5th (left), 50th (center) and 95th (right) quantiles from the predictive distribution using the MLEs from the (a) preferential, and (b) non-preferential predictive distributions generated using the plug-in joint model MLEs.  The 1997 data locations are plotted as black circles.}
+\label{preds}
+\end{sidewaysfigure}
+
+\FloatBarrier
+
+\section{Discussion}
+As shown in Sec. \ref{unitSquare}, preferential sampling can have a substantial impact on classical techniques for covariance parameter and variogram estimation as well as on predictions.  However, the variance of the field of interest seems to play an important role in the affect of the preferentiality.  For instance, in Table \ref{simKriging} the bias is less under model 2 in spite of using a preferentiality parameter, $\beta$, that is larger in magnitude than in model 1 (here $\beta = -2.20$ rather than 2).  As noted in \citet{diggle2010}, the difference in the bias is likely due to the difference in variance, since $\sigma^2 = 0.14$ in model 2 and $1.5$ in model 1.  Larger variations in the true process means there are more chances for regions with extreme values that promote clustering or repulsion.
+\par %%%%%%%%% assumption of independence
+While the LGCP model using the preferential parameter from \citet{diggle2010} seems to fit the data well enough using the test statistic defined in (\ref{envelopeTest}), it is unclear what the correct cutoff distance for the statistic shoudl be.  \citet{diggle2010} uses 25 kilometers as the cutoff, but the spatial domain of interest is roughly 200 kilometers in diamter, and the fit range parameter is $\phi = .31$, which corresponds to a range of 31 kilometers.  Under the fit covariance model, data will then be at least 5\% correlated until about 93 kilometers away.  Perhaps a larger maximum distance in (\ref{envelopeTest}) would give more information regarding how well the LGCP model truly fits the data.
+\par
+The predictions correspond well to the joint preferential model predictions given in \citet{diggle2010}.  It is important to note, however, that the data locations are sparse in all of the spatial domain except for the north, and the data is especially sparse in the south and east regions.  Assumptions of stationarity and constant expectation may be especially problematic when predicting far from the data, so predictions farther south than the 45.5 kilometer northing portion of the predictive maps for instance are likely not as certain as claimed.
+
+\section{Conclusions}
+Although classical geostatistical methods often ignored preferential sampling, this analysis based on \citet{diggle2010} shows that ignoring the preferential nature of the sampling procedure can lead to biased results.  Simulation results indicate that preferentiality leads to negatively biased empirical variogram estimates with more bias as the distances of the variogram bins increase.  In addition, the simulation study suggests that generated predictions are biased after the parameters are fit using maximum likelihood.  When preferentiality is positive ($\beta > 0$ in an LGCP model) the predictions tend to be too high, while when preferentiality is negative ($\beta < 0$) the predictions tend to be too low.
+\par
+Additional testing would help to show the usefulness of the preferential model proposed by \citet{diggle2010}.  While the simulation study shows that non-preferential models perform poorly in a preferential setting, there is no testing of the preferential model.  The same test as performed in the simulation study (the results of which are shown in Figure \ref{VGbias} and Table \ref{simKriging}) could test how well the the preferential model is able to estimate covariance parameters and make predictions on the unit square under a known model.
+\par
+The main contribution of \citet{diggle2010} is the combination of the LGCP model for preferentiality with the classical spatial statistical model for geostatistical data in (\ref{model}).  The Monte Carlo likelihood technique makes the likelihood tractable, and the flexibility of LGCP models could make the preferential model proposed by \citet{diggle2010} applicable in many settings.  However, the lack of use of a true predictive distribution under the model and instead using the plug-in MLEs under the non-preferential predictive distribution is problematic.
+\par
+More recently, MCMC methods for inference and prediction with geospatial data under a LGCP model for preferentiality have been applied in the \verb|lgcp| \verb|R| package \citep{lgcp}.  Also, \citet{diggle2013} discusses moment-based, likelihood, and Markov chain Monte Carlo (MCMC) techniques for performing inference, and the \verb|INLA| package in R can be used for the same purpose.  Future directions may lie in improving MCMC methods and extending this model to include covariates, perhaps as in Eq. (12) of \citet{diggle2010}.
+
+%\bibliographystyle{../te}
+\bibliography{../prelim}
+
+\section{Appendix}
+
+\subsection{The preferential likelihood as a Monte Carlo problem}
+\label{deriveLik}
+\bal
+L(\theta) &= f_{X,Y}(x, y) = \int f_S(s) f_{X \vert S}(x \vert s) f_{Y \vert S, X}(y \vert s, x) \ ds \\
+&= \int f_{X \vert S}(x \vert s) f_{Y \vert S, X}(y \vert s, x) \frac{f_{S \vert Y}(s \vert y)}{f_{S \vert Y}(s \vert y)} f_S(s) \ ds \\
+&= \int f_{X \vert S}(x \vert s) f_{Y \vert S_0}(y \vert s_0) \frac{f_{S \vert Y}(s \vert y)}{f_{S_0 \vert Y}(s_0 \vert y) f_{S_1 \vert S_0 , Y}(s_1 \vert s_0, y)} f_{S_0}(s_0) f_{S_1 \vert S_0}(s_1 \vert s_0) \ ds \\
+&= \int f_{X \vert S}(x \vert s) \frac{f_{Y \vert S_0}(y \vert s_0)}{f_{S_0 \vert Y}(s_0 \vert y)} f_{S \vert Y}(s \vert y) f_{S_0}(s_0) \ ds \\
+&= E_{S \vert Y}\brack{f_{X \vert S}(x \vert s) \frac{f_{Y \vert S_0}(y \vert s_0)}{f_{S_0 \vert Y}(s_0 \vert y)} f_{S_0}(s_0)}
+\eal
+
+\begin{comment}
  \bal
 L(\theta) &= \int_S [X \vert S] [Y \vert S, X] \frac{[S \vert X, Y]_{np}}{[S \vert X, Y]_{np}} [S] \ dS \\
 &= \int_S [X \vert S] [Y \vert S, X] \frac{[S \vert X, Y]_{np}}{[S_1 \vert S_0, X, Y]_{np} [S_0 \vert X, Y]_{np}} [S_1 \vert S_0] [S_0] \ dS \\
@@ -229,14 +337,167 @@ L(\theta) &= \int_S [X \vert S] [Y \vert S, X] \frac{[S \vert X, Y]_{np}}{[S \ve
 &= \int_S  [X \vert S] \frac{[Y \vert S_0, X]}{[S_0 \vert X, Y]_{np}} [S_0 \vert X] \ind_{X=x} [S \vert X, Y]_{np} \ dS \\
 &= E_{[S \vert X, Y]_{np}} \brack{ [X \vert S] \frac{[Y \vert S_0, X]}{[S_0 \vert X, Y]_{np}} [S_0 \vert X]  }
 \eal
- 
-%\bibliographystyle{../te}
-\bibliography{../prelim}
+\end{comment}
+
+\subsection{Terms of the preferential likelihood}
+\label{deriveLikTerms}
+$[X \vert S]$, the inhomogeneous Poisson process likelihood, is given by:
+\bal
+L(\v{\theta}) &= \paren{\prodi \Lambda(x_i)} \paren{\int \Lambda(x) \ dx}^{-n} \\
+&= \paren{\prodi \exp{\alpha + \beta S(x_i)}} \paren{\int \exp{\alpha + \beta S(x)} \ dx}^{-n}
+\eal
+Since \citet{diggle2010} does not specify how to choose $\alpha$, I derive the profile MLE using the MLE for the canonical parameter of the Poisson distribution.  First, note that if $X \sim \Pois{a}$, then $\h{a}_{MLE} = X_1$ if we only have one observation.  Since the number of observations, say $n$, in the 1997 data is distributed $\Pois{\int \Lambda(x) \ dx} \stackrel{d}{=} \Pois{A \cdot E \Lambda}$ where $A$ is the area of the spatial domain, our MLE for $E \Lambda$ is $\frac{n}{A}$.  But $\Lambda(x)$ is distributed lognormal, so
+\bal
+E \Lambda &= E \exp{\alpha + \beta S} \\
+&= \exp{\alpha + \beta^2 \sigma^2/2}
+\eal
+We can therefore easily solve for a profile estimate of $\alpha$:
+\bal
+\frac{n}{A} &= \exp{\h{\alpha} + \beta^2 \sigma^2/2} \\
+\log(\frac{n}{A}) &= \h{\alpha} + \beta^2 \sigma^2/2 \\
+\h{\alpha} &= \log(\frac{n}{A}) - \beta^2 \sigma^2/2 \\
+\eal
+Since $S$ is simulated on a fine lattice, we can compute $\Lambda$ over the lattice as well as its mean.
+\\\\
+The distribution of $S \vert Y$ can be derived using the fact that they are jointly normal.  To see this, note that $Y_i = \mu + S(x_i) + Z_i$, where $Z_i \indep S$.  The independence of $Z_i$ and $S$ and their respective distributions being Gaussian implies $S$ and $Y$ are jointly normal.  Given this fact, we can use the standard conditional distribution for jointly multivariate normal random vectors \citep[Chapter 2]{rueHeld2005}.  If random vectors $\v{A}$ and $\v{B}$ are jointly normal such that
+$$ {\v{A} \choose \v{B}} \sim \MVN{{\v{\mu}_A \choose \v{\mu}_B}, \bp \Sigma_{AA} & \Sigma_{AB} \\ \Sigma_{BA} & \Sigma_{BB} \ep}$$
+then
+\bal
+\v{\mu}_{A \vert B} &= \mu_A + \Sigma_{AB} \Sigma_{BB}^{-1}(\v{B} - \v{\mu}_B) \\
+\Sigma_{A \vert B} &= \Sigma_{AA} - \Sigma_{AB} \Sigma_{BB}^{-1} \Sigma_{BA}
+\eal
+Since
+\bal
+{\v{S} \choose \v{Y}} &= {\v{S} \choose \v{S}_0 + \v{Z} + \v{\mu}} \\
+&\sim \MVN{{\v{0} \choose \v{\mu}}, \bp \Sigma & \Sigma C' \\ C \Sigma & \Sigma_0 \ep}
+\eal
+we apply the conditional formulas to get $\v{S} \vert \v{Y}$ is multivariate normal with expectation and covariance given by:
+\bal
+\v{\mu}_{\v{S} \vert \v{Y}} &= \v{\mu}_S + \Sigma C' \Sigma_0^{-1} (\v{Y} - \v{\mu}) \\
+&= \Sigma C' \Sigma_0^{-1} (\v{Y} - \v{\mu}) \\
+\Sigma_{\v{S} \vert \v{Y}} &= \Sigma - \Sigma C' \Sigma_0^{-1} C \Sigma
+\eal
+Put $\wt{\Sigma}_0 = \Sigma_0 - \tau^2I = C \Sigma C'$.  Since $\v{S}_0 = C \v{S}$, we then get:
+\bal
+\v{\mu}_{\v{S_0} \vert \v{Y}} &= C \v{\mu}_{\v{S} \vert \v{Y}} \\
+&= C \Sigma C' \Sigma_0^{-1} (\v{Y} - \v{\mu}) \\
+&= \wt{\Sigma}_0 \Sigma_0^{-1} (\v{Y} - \v{\mu}) \\
+\eal
+Similarly,
+\bal
+\Sigma_{\v{S_0} \vert \v{Y}} &= C \Sigma C' - C \Sigma C' \Sigma_0^{-1} C \Sigma C' \\
+&= \wt{\Sigma}_0 - \wt{\Sigma}_0 \Sigma_0^{-1} \wt{\Sigma}_0 \\
+&= \wt{\Sigma}_0 - (\Sigma_0 - \tau^2I) \Sigma_0^{-1} (\Sigma_0 - \tau^2I) \\
+&= \wt{\Sigma}_0 - (\Sigma_0 - 2\tau^2I+ \tau^4 \Sigma_0^{-1} ) \\
+&= \tau^2I - \tau^4 \Sigma_0^{-1}  \\
+&= \tau^2(I - \tau^2 \Sigma_0^{-1})
+\eal
+Hence,
+\bal
+\v{S} \vert \v{Y} &\sim \MVN{\Sigma C' \Sigma_0^{-1} C \Sigma, \ \Sigma - \Sigma C' \Sigma_0^{-1} C \Sigma} \\
+\v{S}_0 \vert \v{Y} &\sim \MVN{ \wt{\Sigma}_0 \Sigma_0^{-1} C \Sigma, \ \tau^2(I - \tau^2 \Sigma_0^{-1})} 
+\eal
+Note that this assumes a preferential model, since the observation locations $\v{X}$ give no additional information from the log-Gaussian Cox Process model.
+\\\\
+The $S_j$'s given by (10) in \citet{diggle2010} have the same distribution as $\v{S} \vert \v{Y}$.  It is clearly multivariate normal, since the $Z$ vector of simulated measurement noise is independent of $\v{Y}$ and $\v{S}$.  I will denote the simulated $Z$ vector from (10) from \citet{diggle2010} as $\t{Z}$ from now on to emphasize the fact that it is independent from the $Z_i$'s in (\ref{model}).  Then, conditional on the data $\v{Y}$, 
+\bal
+\E{S_j} &= \E{S + \Sigma C' \Sigma_0^{-1}(\v{Y} - \v{\mu} + \t{Z} - C\v{S})} \\
+&= \v{0} + \Sigma C' \Sigma_0^{-1}(\v{Y} - \v{\mu} + \v{0} - C\v{0}) \\
+&= \Sigma C' \Sigma_0^{-1}(\v{Y} - \v{\mu}) \\
+&= \v{\mu}_{\v{S} \vert \v{Y}}
+\eal
+Similarly, 
+\bal
+\var{S_j} &= \var{S + \Sigma C' \Sigma_0^{-1}(\v{Y} - \v{\mu} + \t{Z} - C\v{S})} \\
+&= \var{S} + \var{\Sigma C' \Sigma_0^{-1}(\v{Y} - \v{\mu} + \t{Z} - C\v{S})} \\
+&+ \cov{S, \Sigma C' \Sigma_0^{-1}(\v{Y} - \v{\mu} + \t{Z} - C\v{S})} \\
+&+ \cov{\Sigma C' \Sigma_0^{-1}(\v{Y} - \v{\mu} + \t{Z} - C\v{S}), S} \\
+\var{S} &= \Sigma \\
+\var{\Sigma C' \Sigma_0^{-1}(\v{Y} - \v{\mu} + \t{Z} - C\v{S})} &= \Sigma C' \Sigma_0^{-1} \var{\v{Y} - \v{\mu} + \t{Z} - C\v{S}} \Sigma_0^{-1} C \Sigma \\
+&= \Sigma C' \Sigma_0^{-1} \paren{ \var{\t{Z}} + \var{\v{S_0}} } \Sigma_0^{-1} C \Sigma \\
+&= \Sigma C' \Sigma_0^{-1} \Sigma_0 \Sigma_0^{-1} C \Sigma \\
+&= \Sigma C' \Sigma_0^{-1} C \Sigma \\
+\cov{S, \Sigma C' \Sigma_0^{-1}(\v{Y} - \v{\mu} + \t{Z} - C\v{S})} &= \cov{S, \v{Y} - \v{\mu} + \t{Z} - C\v{S}} \Sigma_0^{-1} C \Sigma \\
+&= \cov{S, -C\v{S}} \Sigma_0^{-1} C \Sigma \\
+&= -\E{S S'} C' \Sigma_0^{-1} C \Sigma \\
+&= -\Sigma C' \Sigma_0^{-1} C \Sigma \\
+\cov{\Sigma C' \Sigma_0^{-1}(\v{Y} - \v{\mu} + \t{Z} - C\v{S}), S} &= -\Sigma C' \Sigma_0^{-1} C \Sigma \\
+\var{S_j} &= \Sigma - \Sigma C' \Sigma_0^{-1} C \Sigma
+\eal
+We therefore find that the $S_j$'s have the required conditional distribution.
+
+\subsection{The correct predictive distribution}
+\label{truePred}
+The $S_j$'s given in (10) of \citet{diggle2010} have the same distribution as would be expected under a clasical, non-preferential model as shown earlier in Appendix A in Sec. \ref{deriveLikTerms}.  However, it is unclear what to true distribution under the preferential model is.  We can write
+\bal
+f_{\v{S} \vert \v{X}, \v{Y}} (\v{s} \vert \v{x}, \v{y}) &\propto f_{\v{X}, \v{Y} \vert \v{S}} (\v{x}, \v{y} \vert \v{s}) f_{\v{S}}(\v{s}) \\
+&= f_{\v{Y} \vert \v{X}, \v{S}} (\v{y} \vert \v{x}, \v{s})  f_{\v{X} \vert \v{S}} (\v{x} \vert \v{s}) f_{\v{S}}(\v{s})
+\eal
+But $f_{\v{Y} \vert \v{X}, \v{S}} (\v{y} \vert \v{x}, \v{s}) f_{\v{S}}(\v{s})$ is the joint likelihood of $\v{S}$ and $\v{Y}$ under a non-preferential model.  As given in Sec. \ref{deriveLikTerms}, 
+$$ {\v{S} \choose \v{Y}} \sim \MVN{{\v{0} \choose \v{\mu}}, \bp \Sigma & \Sigma C' \\ C \Sigma & \Sigma_0 \ep} $$
+with joint likelihood
+\bal
+f_{\v{S}, \v{Y}}(\v{s}, \v{y}) &\propto \exp{ -\frac{1}{2} {\v{S} \choose \v{Y} - \v{\mu}}' \bp \Sigma & \Sigma C' \\ C \Sigma & \Sigma_0 \ep^{-1} {\v{S} \choose \v{Y} - \v{\mu}}}
+\eal
+Now, letting $A$ be the area of the spatial domain, 
+\bal
+f_{\v{X} \vert \v{S}} (\v{x} \vert \v{s}) &= \paren{\prodi \exp{\alpha + \beta S(x_i)}} \paren{\int \exp{\alpha + \beta S(x)} \ dx}^{-n} \\
+&= \exp{n\alpha + \beta \sumi S(x_i)} \paren{A \E{\exp{\alpha + \beta S(x)}}}^{-n} \\
+&= \exp{n\alpha + \beta \sumi S(x_i)} \paren{A \exp{\alpha + \beta^2 \sigma^2/2}}^{-n} \\
+&\propto \exp{\beta \sumi S(x_i)} \\
+&=\exp{\v{\beta}' C' I C \v{S}} 
+\eal
+We therefore find the true preferential predictive distribution is
+$$ f_{\v{S} \vert \v{X}, \v{Y}} (\v{s} \vert \v{x}, \v{y}) \propto \exp{\v{\beta}' C' I C \v{S} -\frac{1}{2} {\v{S} \choose \v{Y} - \v{\mu}}' \bp \Sigma & \Sigma C' \\ C \Sigma & \Sigma_0 \ep^{-1} {\v{S} \choose \v{Y} - \v{\mu}}} $$
+From here, however, I am not sure how to proceed.  Since the term added to the exponent of the Gaussian likelihood is linear in $\v{S}$, it looks like the terms in the exponent can be combined, but it is unclear how to do so.
+
+\subsection{$K$-function of the log-Gaussian Cox process}
+\label{deriveKFun}
+Given a point process, $N(\cdot)$, where $N(B)$ is a random variable giving the number of points in set $B$, \citet[Chapter 4.2]{diggle2003} defines both the \emph{first-order} intensity function,
+$$\lambda(x) = \lim_{|dx| \to 0} \frac{E(N(dx))|}{|dx|} $$
+and the \emph{second-order} intensity, 
+$$\lambda_2(x,y) = \lim_{|dx|, |dy| \to 0} \frac{E(N(dx) N(dy))|}{|dx| |dy|} $$
+where $dx$ and $dy$ are open sets in our space containing $x$ and $y$ and the above norms in the denominator denote the Lebesgue measure.  We further define the \emph{conditional intensity},
+$$\Lambda_c(x) = \frac{\lambda_2(x,y)}{\lambda(y)}, $$
+which represents the intensity at point $x$ conditional on there begin a point at location $y$.  For a Cox process, we have by \citet[Chapter 5.5]{diggle2003} that
+\bal
+\lambda(x) &= \E{\Lambda(x)} \\
+\lambda_2(x,y) &= \E{\Lambda(x) \Lambda(y)} \\
+&= \cov{\Lambda(x), \Lambda(y)} + \E{\Lambda(x)}^2
+\eal
+Under stationarity, we let $\lambda \defn \E{\Lambda(x)}$, and put $\gamma(t) \defn \cov{\Lambda(x), \Lambda(x + t)}$.  As given in \citet{diggle2013}, we then get $\gamma(t) = \lambda^2 \paren{\exp{\beta^2 \sigma^2 \rho(u ; \phi, \kappa)} - 1}$.  Note that $\gamma(t)$ as used here is not the same $\gamma(t)$ in (11) of \citet{diggle2010}.
+\\\\
+The $K$-function of a stationary point process is defined as
+$$ K(t) = \lambda^{-1} \E{N_0(t)} $$
+when $t$ is taken as a distance, and $N_0(t)$ is the number of points in the point process that are in a disc of radius $t$ centered at any point in the point process.  Note that we do not count the point in the center of the disc.  Hence, following \citet[Chapter 4.2]{diggle2003}, 
+\bal
+K(t) &= \lambda^{-1} \E{N_0(t)} \\
+&= \lambda^{-1} \int_0^{2\pi} \int_0^t \lambda_c(t) t \ dt \ d\theta \\
+&= 2 \pi \lambda^{-1} \int_0^t \frac{\lambda_2(t)}{\lambda} t \ dt \\
+&= 2 \pi \lambda^{-2} \int_0^t (\gamma(t) + \lambda^2) t \ dt \\
+&= 2 \pi \lambda^{-2} \int_0^t \lambda^2 t \ dt + 2 \pi \lambda^{-2} \int_0^t \gamma(t) t \ dt \\
+&=  \pi t^2 + 2 \pi \lambda^{-2} \int_0^t \gamma(t) t \ dt \\
+&=  \pi t^2 + 2 \pi \lambda^{-2} \int_0^t \lambda^2 ( \exp{\beta^2 \sigma^2 \rho(u ; \phi, \kappa)} - 1 ) t \ dt \\
+&=  \pi t^2 + 2 \pi \int_0^t ( \exp{\beta^2 \sigma^2 \rho(u ; \phi, \kappa)} - 1 ) t \ dt \\
+\eal
+This is (11) from \citet{diggle2010}.
+
+\subsection{Variogram fitting}
+\label{diffs}
+
+As noted in \citet{diggle2010}, there are two observations from the 2000 data that are outliers.  Using the authors' proposed method, I replace the outliers with mean of the other observations.  This leads to statistical properties of the dataset matching those given in Table 2 from \citet{diggle2010}.  When fitting the variograms using this data, I get the results shown in Figure \ref{vgram}, and the empirical 2000 variogram has smaller variance than that given in \citet{diggle2010}.  I replot the empirical variogram using the raw data with the fit from the corrected data in Figure \ref{varioDiff}.  Although the empirical variogram appears the match that of \citet{diggle2010}, it is using the uncorrected data that includes the outliers.  If the parameters for the 2000 data were fit using the raw data, it could explain some of the the difference in the likelihood ratio results testing the applicability of a joint model versus two separate models for 1997 and 2000.
+
+\begin{figure}
+\centering
+\image{width=5in}{vario00Diff.pdf}
+\caption{Empirical variogram (dots) for uncorrected year 2000 log-lead data plotted against the fitted theoretical Mat\'{e}rn variogram for the corrected log-lead data (solid line).}
+\label{varioDiff}
+\end{figure}
 
 \end{document}
 
 \begin{comment}
-\bal
+ \bal
 L(\theta) &= \int_S [X \vert S] [Y \vert S, X] \frac{[S \vert X, Y]_{np}}{[S \vert X, Y]_{np}} [S] \ dS \\
 &= \int_S [X \vert S] [Y \vert S, X] \frac{[S \vert X, Y]_{np}}{[S_1 \vert S_0, X, Y]_{np} [S_0 \vert X, Y]_{np}} [S_1 \vert S_0] [S_0] \ dS \\
 &= \int_S [X \vert S] \frac{[Y \vert S, X]}{[S_1 \vert S_0, X, Y]_{np} [S_0 \vert X, Y]_{np}} [S_1 \vert S_0] [S_0] [S \vert X, Y]_{np} \ dS \\

@@ -16,6 +16,8 @@ genMaternGP = function(nsim=1, nx=resGP, ny=resGP, mu=4, sigmasq=1.5, phi=.15, k
     ys = seq(0, 1, length=ny)
     coords = make.surface.grid(list(x=xs, y=ys))
   }
+  else
+    coordsSet = FALSE
   
   if(method == "instrinsic")
     sims = as.matrix(RFsimulate(RPintrinsic(obj), x=coords[,1], y=coords[,2], n=nsim)) + mu
@@ -165,7 +167,7 @@ genClusterPP = function(numSamples=1, nx=resGP, ny=resGP,
 # model
 genPreferentialPP2 = function(numSamples=1, xyRes=resGP, 
                              mu=4, sigmasq=1.5, phi=.15, kappa=1, beta=2, tausq=0, 
-                             npts=100, GPcoords=NULL, method="instrinsic", replace=TRUE) {
+                             npts=100, GPcoords=NULL, method="circulant", replace=TRUE) {
   nx=xyRes
   ny=xyRes
   
@@ -209,7 +211,7 @@ genPreferentialPP2 = function(numSamples=1, xyRes=resGP,
 # model
 genClusterPP2 = function(numSamples=1, xyRes=resGP, 
                               mu=4, sigmasq=1.5, phi=.15, kappa=1, beta=2, tausq=0, 
-                              npts=100, method="instrinsic") {
+                              npts=100, method="circulant") {
   
   # first generate preferentially
   prefPPs = genPreferentialPP2(numSamples, xyRes, mu, sigmasq, phi, kappa, beta, tausq, npts, method=method)

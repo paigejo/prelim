@@ -1,5 +1,5 @@
 library(fields)
-resGP <<- 64
+resGP <<- 256
 
 # function to estimate empirical variogram of one PP
 getVario = function(PP, GP, breaks=seq(0, 1, length=100), 
@@ -182,19 +182,19 @@ varioAnalysis = function(nsims = 500) {
   GPCoords = make.surface.grid(list(x=GP$xcol, y=GP$yrow))
   par(mfrow=c(1,1), family="serif")
   png("unifScheme.png", width=500, height=500)
-  quilt.plot(GPCoords, GP$v, main="Uniform Sample")
+  quilt.plot(GPCoords, GP$v, main="Uniform Sample", nx=resGP, ny=resGP)
   axis(1, at=seq(0, 1, l=3))
   axis(2, at=seq(0, 1, l=3))
   plot(unifPP, add=TRUE, pch=19, cex=.5)
   dev.off()
   
   png("clustScheme.png", width=500, height=500)
-  quilt.plot(GPCoords, GP$v, main="Clustered Sample")
+  quilt.plot(GPCoords, GP$v, main="Clustered Sample", nx=resGP, ny=resGP)
   points(clustPP, pch=19, cex=.5)
   dev.off()
   
   png("prefScheme.png", width=500, height=500)
-  quilt.plot(GPCoords, GP$v, main="Preferential Sample")
+  quilt.plot(GPCoords, GP$v, main="Preferential Sample", nx=resGP, ny=resGP)
   plot(prefPP, pch=19, cex=.5)
   dev.off()
   
