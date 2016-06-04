@@ -447,7 +447,7 @@ MLPref = function(coords97, log97, coords00, log00,
 # based on Eq. (9) and (10) from diggle (2010).  The input distMat should be for the
 # gridCoords
 likPreferentialMC = function(params, gridCoords, dat, distMat, C, Ct, inds, 
-                           res=60, nsims=10000, doPar=FALSE, nProc=4) {
+                           res=60, nsims=10000, npDat=NULL, doPar=FALSE, nProc=4) {
   # n and N as defined in paper: n is number of observations, N is number of pts in grid
   n = length(dat)
   N = nrow(gridCoords)
@@ -677,10 +677,10 @@ likGP = function(dat, Sigma0U, fac=1) {
 }
 
 #generate S from marginal distribution at data locations
-#params: a vector of elements in order (mu97, mu00, logSill, logPhi, logTau, beta)
+#params: a vector of elements in order (mu97, mu00, logSigma, logPhi, logTau, beta)
 genS = function(params, gridCoords, nsim=1, intrinsic=FALSE) {
   #get parameters:
-  mu97 = params[1]
+  # mu97 = params[1]
   #mu00 = params[2] #this is only called from getLikPair, which is only called from getSimLik
   sigmasq= exp(params[2])^2
   phi = exp(params[3])
@@ -709,6 +709,26 @@ hessianToCorrMat = function(hessMat) {
   corrMat = D %*% covMat %*% D
   return(corrMat)
 }
+hessianToCovMat = function(hessMat) {
+  solve(-hessMat)
+}
+hessianToSE = function(hessMat, logVec = rep(F, nrow(hessMat)), estimates=NULL) {
+  logSEs = diag(solve(-hessMat))
+  
+  if(!is.null(estimates)) {
+    #delta method implies SE on linear scale is SE of log scale times exp(estimate)
+    logSEs[logVec] = logSEs[logVec]*exp(estimates[logVec])
+  }
+  
+  logSEs
+}
+# hessianToCorrMat(out$MLEsJoint$hessian)
+# library(xtable)
+# xtable(hessianToCorrMat(out$MLEsJoint$hessian))
+# xtable(hessianToCovMat(out$MLEsJoint$hessian))
+pars = out$MLEsJoint$par
+pars[c(3,5)] = sqrt(pars[c(3,5)])
+hessianToSE(out$MLEsJoint$hessian, c(F, F, T, T, T), pars)
 
 #find what reltol to use for Neld-Mead
 
@@ -718,7 +738,6 @@ getRelTol = function(v=-50, n=25, StDev=8.154035, nMC=10000) {
   v = abs(v)
   abs((-v + sqrt(v^2 +4*p))/2)
 }
-
 
 
 
