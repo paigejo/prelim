@@ -32,6 +32,10 @@
   }
 \end{center}
 
+\abstract{
+This report reviews and attempts to recreate the results of \citet{diggle2010}, which incorporates preferentiality modeled as a log-Gaussian Cox process into classical geostatistical methods.  We consider the work's literary context and possible avenues for future research.
+}
+
 \section{Background and Motivation}
 \label{intro}
 As discussed in \citet{diggle2010}, geostatistics considers stochastic processes varying in space.  In some applications the process, $S$, might be measured at a set of discrete locations, say $X = \set{x_1, x_2, ..., x_n}$.  We often assume $X$ is a subset of $\mathbb{R}^2$, as in \citet{diggle2010}).  In other settings, $S$ might be measured as a set of averages or a quantile function over different regions.  Here, we consider the following model for measured observations, $Y_i \in \mathbb{R}$, of the spatial process:
@@ -299,7 +303,7 @@ It is important to note that, as in \citet{diggle2010}, I draw predictions from 
 \section{Discussion}
 As shown in Sec. \ref{unitSquare}, preferential sampling can have a substantial impact on classical techniques for covariance parameter and variogram estimation as well as on predictions.  However, the variance of the field of interest seems to play an important role in the affect of the preferentiality.  For instance, in Table \ref{simKriging} the bias is less under model 2 in spite of using a preferentiality parameter, $\beta$, that is larger in magnitude than in model 1 (here $\beta = -2.20$ rather than 2).  As noted in \citet{diggle2010}, the difference in the bias is likely due to the difference in variance, since $\sigma^2 = 0.14$ in model 2 and $1.5$ in model 1.  Larger variations in the true process means there are more chances for regions with extreme values that promote clustering or repulsion.
 \par %%%%%%%%% assumption of independence
-While the LGCP model using the preferential parameter from \citet{diggle2010} seems to fit the data well enough using the test statistic defined in (\ref{envelopeTest}), it is unclear what the correct cutoff distance for the statistic shoudl be.  \citet{diggle2010} uses 25 kilometers as the cutoff, but the spatial domain of interest is roughly 200 kilometers in diamter, and the fit range parameter is $\phi = .31$, which corresponds to a range of 31 kilometers.  Under the fit covariance model, data will then be at least 5\% correlated until about 93 kilometers away.  Perhaps a larger maximum distance in (\ref{envelopeTest}) would give more information regarding how well the LGCP model truly fits the data.
+While the LGCP model using the preferential parameter from \citet{diggle2010} seems to fit the data well enough using the test statistic defined in (\ref{envelopeTest}), it is unclear what the correct cutoff distance for the statistic should be.  \citet{diggle2010} uses 25 kilometers as the cutoff, but the spatial domain of interest is roughly 200 kilometers in diamter, and the fit range parameter is $\phi = .31$, which corresponds to a range of 31 kilometers.  Under the fit covariance model, data will then be at least 5\% correlated until about 93 kilometers away.  Perhaps a larger maximum distance in (\ref{envelopeTest}) would give more information regarding how well the LGCP model truly fits the data.
 \par
 The predictions correspond well to the joint preferential model predictions given in \citet{diggle2010}.  It is important to note, however, that the data locations are sparse in all of the spatial domain except for the north, and the data is especially sparse in the south and east regions.  Assumptions of stationarity and constant expectation may be especially problematic when predicting far from the data, so predictions farther south than the 45.5 kilometer northing portion of the predictive maps for instance are likely not as certain as claimed.
 
