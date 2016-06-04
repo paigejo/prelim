@@ -1,13 +1,4 @@
-#set working directory
-#setwd("~/Google Drive/UW/coursework/2016_SPRING/prelim/code/")
-
-# read in data
-setwd("~/git/prelim/code")
-source("loadData.R")
-source("support_funs.R")
-
 #plot data
-library(fields)
 library(latex2exp)
 pdf("data_1997.pdf", width=5, height=6)
 quilt.plot(coords97, data97, main=TeX("Lead Concentration ($\\mu g/g$), 1997"), 
@@ -99,3 +90,53 @@ out = rLGCP("exp", muMLE, var=betaMLE^2*varianceMLE, scale=scaleMLE,
 plot(out)
 #plot(attr(out, "Lambda"))
 #points(out)
+
+##### Make table 2 from paper:
+loadRawData()
+library(xtable)
+tab = matrix(nrow=8, ncol=5)
+tab[1,2] = "Levels ($mu$($g$ dray weight$)^{-1}$) for the following scales and years:)"
+tab[2,2] = "Untransformed"
+tab[2,4] = "Log-transformed"
+tab[3,2] = 1997
+tab[3,3] = 2000
+tab[3,4] = 1997
+tab[3,5] = 2000
+tab[4,1] = "Number of locations"
+tab[4,2] = length(log97)
+tab[4,3] = length(log00)
+tab[4,4] = length(log97)
+tab[4,5] = length(log00)
+tab[5,1] = "Mean"
+tab[5,2] = mean(data97)
+tab[5,3] = mean(data00)
+tab[5,4] = mean(log97)
+tab[5,5] = mean(log00)
+tab[6,1] = "Standard deviation"
+tab[6,2] = sd(data97)
+tab[6,3] = sd(data00)
+tab[6,4] = sd(log97) 
+tab[6,5] = sd(log00)
+tab[7,1] = "Minimum"
+tab[7,2] = min(data97)
+tab[7,3] = min(data00)
+tab[7,4] = min(log97)
+tab[7,5] = min(log00)
+tab[8,1] = "Maximum"
+tab[8,2] = max(data97)
+tab[8,3] = max(data00)
+tab[8,4] = max(log97)
+tab[8,5] = max(log00)
+xtable(tab, digits=2)
+loadCorrectedData()
+
+##### recreate Figure 4 from paper (ecdf of data)
+pdf("ecdf.pdf", width=7, height=5)
+parSet = par()
+par(mar=c(5.1, 5, 4.1, 2.1))
+plot(ecdf(log97), lty=1, pch=".", xlim=c(-.5, 2.5), main="Empirical CDF of data", 
+     xlab=expression(italic(x)), ylab=expression(italic(hat(F)(x))))
+plot(ecdf(log00), lty=1, pch=".", col="blue", add=TRUE)
+legend("left", legend=c(1997, 2000), col=c("black", "blue"), lty=1)
+suppressWarnings(par(parSet))
+dev.off()

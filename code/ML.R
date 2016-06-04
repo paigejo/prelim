@@ -176,6 +176,25 @@ MLStandard = function(coords97, log97, coords00, log00,
               MLEs00 = MLEs00, MLEsJoint = MLEsJoint))
 }
 
+# out = MLStandard(coords97, log97, coords00, log00, initParams=NULL)
+# > out$MLEs97$par
+# mu97   sigmasq       phi     tausq 
+# 1.5422466 0.1464766 0.1930667 0.0830306 
+# > out$MLEs00$par
+# mu00    sigmasq        phi      tausq 
+# 0.72608418 0.15457486 0.27665466 0.01296299 
+# > out$MLEsJoint$par
+# mu97       mu00    sigmasq        phi      tausq 
+# 1.55157286 0.72703505 0.13635714 0.30503468 0.05239249 
+# > out$MLEs97$value
+# [1] -37.20306
+# > out$MLEs00$value
+# [1] -37.04478
+# > out$MLEsJoint$value
+# [1] -80.3381
+# > likRatioTest(out$MLEs97$value, out$MLEs0$value, out$MLEsJoint$value)
+# [1] 0.006789688
+
 # test if sigma phi and tau are the same
 likRatioTest = function(loglik97, loglik00, loglikJoint) {
   testStat = 2*(loglik97 + loglik00 - loglikJoint)
@@ -183,6 +202,8 @@ likRatioTest = function(loglik97, loglik00, loglikJoint) {
   pVal = 1 - pchisq(testStat, dof)
   return(pVal)
 }
+
+
 
 #####################################################################################
 #####################################################################################
@@ -208,8 +229,8 @@ likRatioTest = function(loglik97, loglik00, loglikJoint) {
 MLPref = function(coords97, log97, coords00, log00, 
                   initParams = c(mu97MLE, mu00MLE, log(sqrt(sillMLE)), 
                                  log(scaleMLE), log(sqrt(nuggetMLE)), beta=betaMLE), 
-                  res=60, nMCSamples = 10000) {
-  
+                  res=60, nMCSamples = 10000, doPar=FALSE, nProc=4) {
+  debug=FALSE
   ##### decide on initial parameters if they aren't provided.  Note that the year 
   ##### 2000 model doesn't require a beta parameter since not preferential
   if(is.null(initParams)) {
@@ -237,6 +258,8 @@ MLPref = function(coords97, log97, coords00, log00,
   # get lattice coordinates, the coordinates for the grid approximation to the GP
   win.poly = matrix(unlist(win$bdry[[1]]), ncol=2)
   latticeCoords = make.surface.grid(list(x=xs, y=ys))
+  
+  # only take points within domain
   latticeCoords = latticeCoords[in.poly(latticeCoords, win.poly),]
   
   # round true coordinates to the lattice coordinates
@@ -251,14 +274,10 @@ MLPref = function(coords97, log97, coords00, log00,
   roundCoords97 = cbind(roundX, roundY)
   
   # find indices of lattice coords corresponding to data coords
-  findIndex = function(coords, len=res) {
-    #convert coords to x and y grid indices
-    coords = coords*(len-1) + 1
-    xInd = coords[1]
-    yInd = coords[2]
-    return((yInd-1)*len + xInd)
+  findIndex = function(rCoords, gCoords) {
+    return(match(data.frame(t(rCoords)), data.frame(t(gCoords))))
   }
-  inds = apply(roundCoords97, 1, findIndex, len=length(xrange))
+  inds = findIndex(roundCoords97, latticeCoords)
   
   #generate C matrix giving indices of X in X* (indices of rounded 
   #observation locations in grid).  Also make C transpose
@@ -276,14 +295,23 @@ MLPref = function(coords97, log97, coords00, log00,
   
   # make a summary tables showing parameter evaluations and likelihoods throughout
   # optimization
-  summTable97 = matrix(nrow=0, ncol=6)
-  colnames(summTable97) = c("mu97", "log(sigma)", "log(phi)", 
-                            "log(tau)", "beta", "loglik97")
+  if(!debug) {
+    summTable97 = matrix(nrow=0, ncol=11)
+    colnames(summTable97) = c("mu97", "sigma", "phi", 
+                              "tau", "beta", 
+                              "loglik97", "lik.XGivenS", "lik.YGivenS0j", "lik.S0jGivenY", "lik.S0j", "MCSE")
+  }
+  else{
+    summTable97 = matrix(nrow=0, ncol=10)
+    colnames(summTable97) = c("mu97", "sigma", "phi", 
+                              "tau", "beta", 
+                              "loglik97", "lik.XGivenS", "lik.YGivenS", "lik.S", "MCSE")
+  }
   summTable00 = matrix(nrow=0, ncol=5)
-  colnames(summTable00) = c("mu00", "log(sigma)", "log(phi)", 
-                            "log(tau)", "loglik00")
+  colnames(summTable00) = c("mu00", "sigma", "phi", 
+                            "tau", "loglik00")
   
-  getLik00 = function(params) {
+  getLik00 = function(params, catTable=TRUE) {
     #get parameters:
     mu = params[1]
     sigma = exp(params[2])
@@ -292,7 +320,8 @@ MLPref = function(coords97, log97, coords00, log00,
     
     #return very zero likelihood if parameters are negative
     if(any(c(sigma, phi, tau) < 0)) {
-      summTable00 <<- rbind(summTable00, c(params, -Inf))
+      if(catTable)
+        summTable00 <<- rbind(summTable00, c(params, -Inf))
       return(log(10^-150))
     }
     
@@ -309,7 +338,12 @@ MLPref = function(coords97, log97, coords00, log00,
     loglik = likGP(logDat - mu, SigmaU)
     
     # update summary table
-    summTable00 <<- rbind(summTable00, c(params, loglik))
+    if(catTable) {
+      params[2:4] = exp(params[2:4])
+      names(params) = colnames(summTable00)[1:4]
+      summTable00 <<- rbind(summTable00, c(params, loglik))
+      c(params, loglik)
+    }
     
     if(!is.finite(loglik)) {
       return(log(10^-150))
@@ -318,32 +352,51 @@ MLPref = function(coords97, log97, coords00, log00,
     return(loglik)
   }
   
-  getLik97 = function(params) {
+  getLiks97 = function(params, catTable=TRUE) {
     # Evaluate log likelihood
-    loglik = likPreferentialMC(params, latticeCoords, log97, distMat97Lattice, C, Ct, inds, 
-                             res=res, nsims=nMCSamples)
-    
-    # update summary table
-    summTable97 <<- rbind(summTable00, c(params, loglik))
+    out = likPreferentialMC(params, latticeCoords, log97, distMat97Lattice, C, Ct, inds, 
+                             res=res, nsims=nMCSamples, doPar, nProc)
+    loglik = out$logLik
     
     if(!is.finite(loglik))
-      return(log(10^-150))
-    else
-      return(loglik)
+      out$allLogLiks[1] = log(10^-150)
+    
+    if(catTable) {
+      # update summary table
+      params[2:4] = exp(params[2:4])
+      names(params) = colnames(summTable97)[1:5]
+      summTable97 <<- rbind(summTable97, c(params, out$allLogLiks, out$MCSE[1]))
+      print(c(params, out$allLogLiks, out$MCSE[1]))
+    }
+    # save in case joint likelihood function needs for its summary table
+    tmpMCSE <<- out$MCSE[1]
+    
+    return(out$allLogLiks)
   }
   
-  summTableJoint = matrix(nrow=0, ncol=9)
-  colnames(summTableJoint) = c("mu97", "mu00", "log(sigma)", "log(phi)", "log(tau)", "beta", 
-                               "loglik97", "loglik00", "loglik")
+  getLik97 = function(params, catTable=TRUE) {
+    out = getLiks97(params, catTable=catTable)
+    out[1]
+  }
+  
+  summTableJoint = matrix(nrow=0, ncol=14)
+  colnames(summTableJoint) = c("mu97", "mu00", "sigma", "phi", "tau", "beta", 
+                               "loglik97", "loglik00", "loglik", 
+                               "lik.XGivenS", "lik.YGivenS0j", "lik.S0jGivenY", "lik.S0j", "MCSE")
   
   getLikJoint = function(params) {
     # Evaluate log likelihood
-    loglik97 = getLik97(params)
-    loglik00 = getLik00(params)
-    loglik = loglik97 + loglik00
+    logliks97 = getLiks97(params[-2], catTable=FALSE)
+    loglik00 = getLik00(params[-c(1, 6)], catTable=FALSE)
+    loglik = logliks97[1] + loglik00
     
     # update summary table
-    summTableJoint <<- rbind(summTableJoint, c(params, loglik97, loglik00, loglik))
+    params[3:5] = exp(params[3:5])
+    names(params) = colnames(summTableJoint)[1:6]
+    summTableJoint <<- rbind(summTableJoint, c(params, logliks97[1], loglik00, loglik, logliks97[-1], tmpMCSE))
+    tmp = c(params, logliks97[1], loglik00, loglik, logliks97[-1], tmpMCSE)
+    names(tmp) = colnames(summTableJoint)
+    print(tmp)
     
     if(!is.finite(loglik))
       return(log(10^-150))
@@ -353,20 +406,23 @@ MLPref = function(coords97, log97, coords00, log00,
   
   ##### maximize likelihood
   controls = list(fnscale=-1, parscale=.1)
-  MLEs97 = optim(initParams97, getLik97, control=list(fnscale=-1, parscale=rep(.1, 5)), 
+  MLEs97 = optim(initParams97, getLik97, control=list(fnscale=-1, parscale=rep(.1, 5), 
+                                                      reltol=getRelTol(nMC=nMCSamples), maxit=50), 
                  hessian=TRUE)
-  MLEs00 = optim(initParams00, getLik00, control=list(fnscale=-1, parscale=rep(.1, 4)), 
-                 hessian=TRUE)
-  MLEsJoint = optim(initParamsJoint, getLikJoint, control=list(fnscale=-1, parscale=rep(.1, 6)), 
-                    hessian=TRUE)
-  
-  #convert units back to standard (non-log) and Var rather than SD scales
   MLEs97$par[2:4] = exp(MLEs97$par[2:4])
   MLEs97$par[c(2,4)] = MLEs97$par[c(2,4)]^2
   names(MLEs97$par) = c("mu97", "sigmasq", "phi", "tausq", "beta")
+  
+  MLEs00 = optim(initParams00, getLik00, control=list(fnscale=-1, parscale=rep(.1, 4), maxit=50, 
+                                                      reltol=getRelTol(nMC=nMCSamples)), 
+                 hessian=TRUE)
   MLEs00$par[2:4] = exp(MLEs00$par[2:4])
   MLEs00$par[c(2,4)] = MLEs00$par[c(2,4)]^2
   names(MLEs00$par) = c("mu00", "sigmasq", "phi", "tausq")
+  
+  MLEsJoint = optim(initParamsJoint, getLikJoint, control=list(fnscale=-1, parscale=rep(.1, 6), maxit=50, 
+                                                               reltol=getRelTol(v=-150, nMC=nMCSamples)), 
+                    hessian=TRUE)
   MLEsJoint$par[3:5] = exp(MLEsJoint$par[3:5])
   MLEsJoint$par[c(3,5)] = MLEsJoint$par[c(3,5)]^2
   names(MLEsJoint$par) = c("mu97", "mu00", "sigmasq", "phi", "tausq", "beta")
@@ -381,17 +437,6 @@ MLPref = function(coords97, log97, coords00, log00,
   initParamsJoint[c(3,5)] = initParamsJoint[c(3,5)]^2
   names(initParamsJoint) = c("mu97", "mu00", "sigmasq", "phi", "tausq", "beta")
   
-  summTable97[,2:4] = exp(summTable97[,2:4])
-  summTable97[,c(2,4)] = summTable97[,c(2,4)]^2
-  colnames(summTable97) = c("mu97", "sigmasq", "phi", "tausq", "beta", "lik97")
-  summTable00[,2:4] = exp(summTable00[,2:4])
-  summTable00[,c(2,4)] = summTable00[,c(2,4)]^2
-  colnames(summTable00) = c("mu00", "sigmasq", "phi", "tausq", "lik00")
-  summTableJoint[,3:5] = exp(summTableJoint[,3:5])
-  summTableJoint[,c(3,5)] = summTableJoint[,c(3,5)]^2
-  colnames(summTableJoint) = c("mu97", "mu00", "sigmasq", "phi", "tausq", "beta",
-                               "loglik97", "loglik00", "loglik")
-  
   return(list(summTable97=summTable97,summTable00=summTable00, 
               summTableJoint=summTableJoint, MLEs97 = MLEs97, 
               MLEs00 = MLEs00, MLEsJoint = MLEsJoint))
@@ -402,24 +447,26 @@ MLPref = function(coords97, log97, coords00, log00,
 # based on Eq. (9) and (10) from diggle (2010).  The input distMat should be for the
 # gridCoords
 likPreferentialMC = function(params, gridCoords, dat, distMat, C, Ct, inds, 
-                           res=60, nsims=10000) {
+                           res=60, nsims=10000, doPar=FALSE, nProc=4) {
   # n and N as defined in paper: n is number of observations, N is number of pts in grid
   n = length(dat)
-  N = length(gridCoords)
+  N = nrow(gridCoords)
   
   #get parameters:
   mu97 = params[1]
-  mu00 = params[2]
-  sigma = exp(params[3])
-  phi = exp(params[4])
-  tau = exp(params[5])
-  beta = params[6] #(note: we don't care about beta until we calculate likelihood of X given S)
+  #mu00 = params[2]
+  sigma = exp(params[2])
+  phi = exp(params[3])
+  tau = exp(params[4])
+  beta = params[5] #(note: we don't care about beta until we calculate likelihood of X given S)
   
   #generate marginal covariance matrix of S, Sigma, for the given parameters
   Sigma = Exp.cov(gridCoords, theta=phi, distMat=distMat)*sigma^2
   
   #Now compute Sigma0, the covariance matrix of Y
-  Sigma0 = as.matrix(C %*% Sigma %*% Ct)
+  #Sigma0 = as.matrix(C %*% Sigma %*% Ct)
+  Sigma0 = Sigma[inds, inds]
+  Sigma10 = Sigma[,inds]
   
   # add nugget error to Sigma with fast internal function of fields in C
   invisible(.Call("addToDiagC", Sigma0, as.double(rep(tau^2, nrow(Sigma0))), nrow(Sigma0)))
@@ -427,82 +474,194 @@ likPreferentialMC = function(params, gridCoords, dat, distMat, C, Ct, inds,
   #Cholesky decomposition of Sigma0 required for likelihood
   Sigma0U = chol(Sigma0)
   
+  # compute muc, expectation of Sj based on this formula:
+  # Sigma %*% Ct %*% Sigma0^-1 %*% (dat - mu97)
+  vec = dat - mu97
+  z = backsolve(Sigma0U, vec, transpose=TRUE)
+  x = cbind(backsolve(Sigma0U, z))
+  #muc = as.numeric(Sigma %*% Ct %*% x)
+  muc = Sigma10 %*% x # checked, muc correct given above formula
+  
   #calculate conditional mean of S given Y (just get sample mean)
   # muc = sigma^2*(dat - mu)/((sigma + tau)*sqrt(sigma^2 + tau^2))
   
   #estimate alpha using MOM estimator (I assume this is what Diggle does?)
-  alpha = log(n/Area) - beta^2*sigma^2/2
+  alpha = log(n/Area) - beta*mu97 - beta^2*sigma^2/2
+  lambdas <<- matrix(nrow=nrow(gridCoords), ncol=nsims)
+  Sjs <<- lambdas
   
   # calculate log-likelihood for given simulation, S, under preferential model
   getSimLik = function(S) {
     #simulate S given Y (authors denote this by Sj).  We want:
-    # Sj = S + Sigma %*% Ct %*% Sigms0Inv %*% (dat - mu + Zs - C %*% S)
+    # Sj = S + Sigma %*% Ct %*% Sigma0Inv %*% (dat - mu + Zs - C %*% S)
     # let x = Sigms0Inv %*% (dat - mu + Zs - C %*% S)
     # calculate x using Cholesky decomp of Sigma0
-    Zs = rnorm(n)
-    vec = dat - mu + Zs - C %*% S
-    z = forwardolve(Sigma0U, vec, transpose=TRUE)
-    x = cbind(backsolve(Sigma0U, z)) #make sure x is a column vector TODO: MAKE SURE THIS WORKS *********
-    Sj = S + Sigma %*% Ct %*% x
-    S0j = Sj[inds]
+    Zs = rnorm(n)*tau
+    #vec = dat - mu97 + Zs - C %*% S
+    vec = dat - mu97 + Zs - S[inds]
+    z = backsolve(Sigma0U, vec, transpose=TRUE)
+    x = cbind(backsolve(Sigma0U, z)) # checked, it works given above formula
+    #Sj = as.numeric(S + Sigma %*% Ct %*% x)
+    Sjs[,count] <<- S + Sigma10 %*% x
+    S0j = Sjs[inds, count]
     
     # calculate lambda(x) given Y since needed in likelihood
-    lambdas = exp(alpha + beta*Sj)
+    lambdas[,count] <<- exp(alpha + beta*(mu97 + Sjs[,count]))
     
     # calculate likelihood of X given S|Y simulation.  Likelihood given by Eq. (8) 
     # in Diggle (2013). There might be faster ways to calculate it though.
-    dx = xs[2] - xs[1]
-    dy = ys[2] - ys[1]
-    dA = area/N
-    lambda = sum(lambdas)*dA #compare with mean(exp(alpha + beta*Sj)) and N*lambda should be about n
-    # lik.XGivenS = prod(lambdas[inds])*lambda^(-n)
-    lik.XGivenS = sum(log(lambdas[inds])) - n*log(lambda) #use log-likelihood, not likelihood
+    lambda = mean(lambdas[,count]) # N*lambda*dA should be about n (where dA = Area/N)
+    # lik.XGivenS = prod(lambdas[inds])*(lambda*Area)^(-n)
+    lik.XGivenS = sum(log(lambdas[inds,count])) - n*log(Area*lambda) #use log-likelihood, not likelihood
     
     # calculate P(Y | S_{0j}) / P(S_{0j} | Y)
     if(tau == 0) {
-      lik.frac = 1
+      lik.frac = 0
+      lik.YGivenS0j=1
+      lik.S0jGivenY=1
     }
     else {
-      # calculate P(Y | S_{0j})
-      #lik.YGivenS0j = prod(dnorm((S0j - dat)/tau))
-      lik.YGivenS0j = sum(log(dnorm((S0j - dat)/tau))) #use log-likelihood not likelihood
+      # Calculate P(Y | S_{0j}):
+      # Use iid normals since Y's conditionally indep given S
+      lik.YGivenS0j = sum(log(dnorm((S0j + mu97 - dat)/tau))) #use log-likelihood not likelihood
       
-      # get P(S_{0j} | Y) (using bivariate normal conditional density)
-      sigmac = sigma^2 - sigma^2/(sigma^2 + tau^2)
-      # lik.S0jGivenY = prod(dnorm((S0j - muc)/sigmac))
-      lik.S0jGivenY = sum(log(dnorm((S0j - muc)/sigmac))) # use log-likelihood not likelihood
+      # Get P(S_{0j} | Y):
+      # First calculate SigmaS0jGivenY =? tau^2*(I - tau^2*Sigma0Inv)
+      UInv = backsolve(r=Sigma0U, x=diag(nrow=nrow(Sigma0U)))
+      Sigma0Inv = UInv %*% t(UInv)
+      SigmaS0jGivenY = tau^2*(diag(nrow=n) - tau^2*Sigma0Inv)
+      #was compared with:
+      # Sigma0Tilde - Sigma0Tilde %*% (Sigma0Tilde + tau^2*I)^-1 %*% Sigma0Tilde
+      
+      # second calculate expectation of S0j|Y = Sigma %*% t(C) %*% Sigma0Inv %*% cbind(y)
+      # we've already calculated this over all lattice points, just take right values
+      muc0 = muc[inds]
+      
+      # then do Cholesky decomposition and solve using lik.GP
+      SigmaS0jGivenYU = chol(SigmaS0jGivenY)
+      lik.S0jGivenY = likGP(S0j - muc0, SigmaS0jGivenYU)
       
       # lik.frac = lik.YGivenS0j/lik.S0jGivenY
+      # the ratio of likelihoods should be 1 when tausq=0, i.e. the difference in log liks should be 0
       lik.frac = lik.YGivenS0j - lik.S0jGivenY
     }
     
-    #calcualte GP log-likelihood (log likelihood of S0j) for zero mean data
-    lik.GP = likGP(dat - mu97, Sigma0U)
+    # Calcualte log-likelihood of S0j marginally:
+    # first calculate covariance matrix (same as Sigma0 but without nugget)
+    Sigma0Tilde = Sigma0 - diag(tau^2, nrow=nrow(Sigma0)) 
+    Sigma0TildeU = chol(Sigma0Tilde)
+    lik.GP = likGP(S0j, Sigma0TildeU)
     
     lik = lik.XGivenS + lik.frac + lik.GP
-    return(lik)
+    count <<- count + 1
+    
+#     if(tau > .45){
+#       print("exploded...")
+#       print("badly...")
+#       print("very badly...")
+#     }
+    
+    return(c(lik=lik, lik.XGivenS=lik.XGivenS, lik.YGivenS0j=lik.YGivenS0j, 
+                lik.S0jGivenY=lik.S0jGivenY, lik.S0j=lik.GP))
+  }
+  
+  # testing function, corresponds to test 1) from tests.R: 
+  # p(y, x, s) = p(y | X, S) p(X | S) p(S)
+  # SigmaU = chol(Sigma)
+  naiveSimLik = function(S) {
+    S0 = S[inds]
+    
+    # calculate lambda(x) given Y since needed in likelihood
+    lambdas = exp(alpha + beta*S)
+    
+    # calculate likelihood of X given S|Y simulation.  Likelihood given by Eq. (8) 
+    # in Diggle (2013). There might be faster ways to calculate it though.
+    lambda = mean(lambdas) # N*lambda*dA should be about n (where dA = Area/N)
+    # lik.XGivenS = prod(lambdas[inds])*(lambda*Area)^(-n)
+    lik.XGivenS = sum(log(lambdas[inds])) - n*log(Area*lambda) #use log-likelihood, not likelihood
+    
+    # Calculate P(Y | S_{0j}):
+    # Use iid normals since Y's conditionally indep given S
+    lik.YGivenS0 = sum(log(dnorm((S0 + mu97 - dat)/tau))) #use log-likelihood not likelihood
+    
+    # Calcualte log-likelihood of S0j marginally:
+    # first calculate covariance matrix (same as Sigma0 but without nugget)
+#     Sigma0Tilde = Sigma0 - diag(tau^2, nrow=nrow(Sigma0)) 
+#     Sigma0TildeU = chol(Sigma0Tilde)
+    lik.S = likGP(S, SigmaU)
+    
+    lik = lik.XGivenS + lik.YGivenS0 + lik.S
+    return(c(lik=lik, lik.XGivenS=lik.XGivenS, lik.YGivenS0=lik.YGivenS0, 
+             lik.S=lik.S))
   }
   
   # compute likelihood for simulated GP S and its antithetic pair: 2mu_c - S
-  getLikPair = function(i) {
-    S = genS(params, gridCoords, nsim=1) ## TODO: S is list with 1 elmnt
+  getLikPair = function(i, nPairs=1) {
+    Ss = genS(params, gridCoords, nsim=nPairs)
     
-    muc = sigma^2*(dat - mu)/((sigma + tau)*sqrt(sigma^2 + tau^2))
-    SAnti = 2*muc - S
-    return(c(getSimLik(S), getSimLik(SAnti)))
+    # muc = sigma^2*(dat - mu)/((sigma + tau)*sqrt(sigma^2 + tau^2))
+    #     
+    #     return(c(getSimLik(S), getSimLik(SAnti)))
+    
+    #get likelihoods given original simulations of S
+    count<<- 1
+    liks = apply(Ss, 2, getSimLik)
+    # testLiks = apply(Ss, 2, naiveSimLik)
+    
+    # Now generate the ``antithetic'' pairs and calculate their likelihoods: SAnti = 2*muc - S
+    Ss = sweep(-Ss, 1, 2*muc, FUN="+")
+    liks = cbind(liks, apply(Ss, 2, getSimLik))
+    # testLiks = cbind(testLiks, apply(-Ss, 2, naiveSimLik))
+    return(list(liks=liks))
+    # return(list(liks=liks, testLiks=testLiks))
   }
   
   #now we can compute all log-likelihoods using apply
   nPairs = ceil(nsims/2)
-  allLogLiks = c(sapply(1:nPairs, getLikPair))
+  
+  if(!doPar) {
+    # allLogLiks = c(sapply(1:nPairs, getLikPair))
+    allLogLiks = getLikPair(1, nPairs=nPairs)
+  }
+  else {
+    clust = makeCluster(nProc)
+    clusterEvalQ(clust, setwd("~/git/prelim/code/"))
+    clusterEvalQ(clust, source("loadAll.R"))
+    allLogLiks = c(parSapply(clust, 1:nPairs, getLikPair))
+    stopCluster(clust)
+  }
+  
+  # function for converting log likelihoods to likelihoods, averaging, and logging again
+  # that is numerically stable
+  shiftExpFun = function(logs, fun="mean") {
+    M = max(logs)
+    expThresh = 500 #make sure all logs < expThresh before exponentiating
+    
+    if(M > expThresh)
+      C = M - expThresh
+    else
+      C = 0
+    
+    return(C + log(do.call(fun, list(exp(logs - C)))))
+  }
+  shiftExpMean = function(logs) {
+    shiftExpFun(logs)
+  }
   
   # final MC likelihood estimate is average of likelihoods, but return log-likelihood:
-  return(log(mean(exp(allLogLiks))))
+  MCSD = apply(allLogLiks$liks, 1, sd)
+  MCSE = MCSD/sqrt(nsims)
+#   MCSDTest = apply(allLogLiks$testLiks, 2, sd)
+#   MCSETest = MCSDTest/sqrt(nsims)
+  return(list(logLik = log(mean(exp(allLogLiks$liks[1,]))), MCSD=MCSD, MCSE=MCSE, 
+              allLogLiks=log(apply(exp(allLogLiks$liks), 1, mean))))
+#   return(list(logLik = shiftExpMean(allLogLiks$testLiks[1,]), MCSD=MCSDTest, MCSE=MCSETest, 
+#               allLogLiks=apply(allLogLiks$testLiks, 1, shiftExpMean)))
 }
 
 #calculate Gaussian Process log-likelihood given data covariance matrix Cholesky 
-# decomposition assuming dat (data) is mean zero
-likGP = function(dat, Sigma0U) {
+# decomposition assuming dat (data) is mean zero (true Sigm0 is fac*(Sigma0L * Sigma0U)
+likGP = function(dat, Sigma0U, fac=1) {
   n = length(dat)
   
   #calcualte GP log likelihood (log likelihood of S0j)
@@ -511,45 +670,35 @@ likGP = function(dat, Sigma0U) {
   # then:
   z = backsolve(Sigma0U, dat, transpose=TRUE)
   x = cbind(backsolve(Sigma0U, z)) #make sure x is a column
-  log.likGP = -(1/2) * rbind(dat) %*% x - sum(log(diag(Sigma0U))) - (n/2)*log(2*pi)
+  log.likGP = -(1/(2*fac)) * rbind(dat) %*% x - sum(log(diag(Sigma0U))) - (n/2)*log(fac) - (n/2)*log(2*pi)
   lik.GP = log.likGP
-  
-  # if likelihood is impossible, the Cholesky decomposition was ill-posed
-  if(lik.GP > 1) {
-    return(log(10^-150))
-  }
   
   return(lik.GP)
 }
 
 #generate S from marginal distribution at data locations
 #params: a vector of elements in order (mu97, mu00, logSill, logPhi, logTau, beta)
-genS = function(params, gridCoords, nsim=1, drop=TRUE) {
+genS = function(params, gridCoords, nsim=1, intrinsic=FALSE) {
   #get parameters:
   mu97 = params[1]
-  mu00 = params[2]
-  sill = exp(params[3])
-  phi = exp(params[4])
-  tausq = exp(params[5])^2
-  beta = params[6]
-  
-  trueSill = sill*beta^2
-  trueTausq = tausq*beta^2
+  #mu00 = params[2] #this is only called from getLikPair, which is only called from getSimLik
+  sigmasq= exp(params[2])^2
+  phi = exp(params[3])
+  tausq = exp(params[4])^2
   
   #use RMexp and RMsimulate to perform circulant embedding to quickly simulate S
-  RMobj = RMexp(var=trueSill, scale=phi)
+  #TODO: generate multiple simulations to improve code efficiency
+  RMobj = RMexp(var=sigmasq, scale=phi)
+  if(!intrinsic)
+    sim = RFsimulate(mode=RPcutoff(RMobj), x=gridCoords[,1], y=gridCoords[,2], n=nsim)
+  else
+    sim = RFsimulate(mode=RPintrinsic(RMobj), x=gridCoords[,1], y=gridCoords[,2], n=nsim)
   
-  if(nsim != 1 || !drop) {
-    sims = list()
-    for(i in 1:nsim) {
-      sims = c(sims, RFsimulate(RMobj, x=gridCoords[,1], y=gridCoords[,2]))
-    }
-  }
-  else { #if nsim == 1 && drop == TRUE, no need to return list with 1 elmnt
-    sims = RFsimulate(RMobj, x=gridCoords[,1], y=gridCoords[,2])
-  }
+  #if many simulations are generated, sim will be a matrix with the correct dimensions
+  if(!is.null(attr(sim, "data")))
+    sim = attr(sim, "data")
   
-  return(sims)
+  return(as.matrix(sim))
 }
 
 #based on http://onlinelibrary.wiley.com/doi/10.1002/9780470824566.app1/pdf and 
@@ -561,7 +710,14 @@ hessianToCorrMat = function(hessMat) {
   return(corrMat)
 }
 
+#find what reltol to use for Neld-Mead
 
+getRelTol = function(v=-50, n=25, StDev=8.154035, nMC=10000) {
+  SE = StDev/sqrt(nMC)
+  p = qnorm(1/(n+1), sd=SE)
+  v = abs(v)
+  abs((-v + sqrt(v^2 +4*p))/2)
+}
 
 
 

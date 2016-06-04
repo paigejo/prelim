@@ -83,7 +83,7 @@ par(mar=c(5.1, 5, 4.1, 2.1))
 plot(env97, legendargs=legendargs, xlim=c(0, .25), ylim=c(-.03, .25), 
      main=expression("Estimated, simulated, and theoretical" ~ italic(K) ~ 
                        "functions"), 
-     ylab=expression(K(r) - 2*pi*r^2))
+     ylab=expression(K(r) - pi*r^2))
 lines(rs, Krs - pis, col="blue", lwd=2)
 suppressWarnings(par(parSet))
 dev.off()
