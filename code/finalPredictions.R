@@ -159,8 +159,12 @@ genPredictions = function(nsim=10000, nx=predRes, ny=predRes, mu=mu97MLE, mu2=mu
 # mu97       mu00    sigmasq        phi      tausq 
 # 1.55157286 0.72703505 0.13635714 0.30503468 0.05239249 
 genPredictionsStandard = function(nsim=10000) {
-  genPredictions(nsim=nsim, mu=1.55157286, sigma=sqrt(0.13635714), 
-                 phi=0.30503468, tau=sqrt(0.05239249), nu=.5)
+  # parameters obtained with initial phi = .3 in optimization
+#   genPredictions(nsim=nsim, mu=1.55157286, sigma=sqrt(0.13635714), 
+#                  phi=0.30503468, tau=sqrt(0.05239249), nu=.5)
+  # parameters obtained with initial phi = .2 in optimization
+  genPredictions(nsim=nsim, mu=1.54701200, sigma=sqrt(0.13107395), 
+                 phi=0.28685933, tau=sqrt(0.05161165), nu=.5)
 }
 
 genPredictionsPreferential = function(nsim=10000) {

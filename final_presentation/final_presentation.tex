@@ -6,6 +6,7 @@
 \usepackage{../mystyle}
 \usepackage{multicol}
 \usepackage{verbatim}
+\usepackage{subfig}
 \usepackage{capt-of}
 \usepackage{natbib}
 \usepackage{url}
@@ -91,12 +92,13 @@
 \end{itemize}
 }
 
-\column{2.5in}
+\column{2.4in}
 \begin{center}
 \includegraphics[width=2.2in]<2>{continuousData.pdf}
 \includegraphics[width=2.2in]<1>{discreteData.pdf}
 \includegraphics[width=2.2in]<3>{PPData.pdf}
 \includegraphics[width=2.2in]<4>{GPPPData.pdf}
+\\{\footnotesize Data simulated with \texttt{RandomFields R} package \citep{RandomFields}}
 \end{center}
 
 \end{columns}
@@ -231,9 +233,9 @@ Three assumptions for model:
 \begin{enumerate}
 \item $S$ is still a stationary, mean zero Gaussian process \\
 (so $S(\v{x}) \sim \MVN{\v{0}, \Sigma(\v{x})}$)
-\item Conditional on $S$, $X$ is an inhomogeneous Poisson process wtih random intensity
+\item Conditional on $S$, $\v{X}$ is an inhomogeneous Poisson process wtih random intensity
 $$\Lambda(x) = \exp{\alpha + \beta S(x)}$$
-\item $Y_i \vert S, X \iid \Norm{\mu + S(x_i), \tau^2}$
+\item $Y_i \vert S, \v{X} \iid \Norm{\mu + S(x_i), \tau^2}$
 \end{enumerate}
 ~\\
 1 + 2 $\Leftrightarrow$ $X$ is a log Gaussian Cox process (LGCP)
@@ -249,6 +251,7 @@ $$\Lambda(x) = \exp{\alpha + \beta S(x)}$$
 \column{2.45in}
 A \tbf{Cox process} is a stochastic point process that for $B, B'$ bounded Borel sets satisfies:
 \begin{itemize}
+\item $\Lambda(x) \geq 0$ is a random intensity
 \item $N(B)~\sim~\Pois{\int_B \Lambda(x) \ dx}$
 \item $N(B) \indep N(B')$ when $B \cap B' = \emptyset$
 \end{itemize}
@@ -257,8 +260,8 @@ A \tbf{Cox process} is a stochastic point process that for $B, B'$ bounded Borel
 
 \begin{figure}
 \centering
-\image{width=2.45in}{cox_proc_fig.pdf}
-\caption{From \citealt{diggle2010}.  An example of a LGCP on unit square where $\beta=2$, $\alpha=1$, and $S$ has Mat\'{e}rn covariance.}
+\image{width=2.45in}{cox_proc_fig.png}
+\caption{An example of a LGCP on unit square where $\beta=2$, and $S$ has Mat\'{e}rn covariance.}
 \end{figure}
 
 \column{.05in}
@@ -269,11 +272,13 @@ A \tbf{Cox process} is a stochastic point process that for $B, B'$ bounded Borel
 %----------------------------------------------------------------------------------------------------------------------------------------
 \begin{frame}
 \frametitle{Testing Affect of Sample Designs: Samplings Schemes}
-\begin{figure}
+\begin{center}
 \centering
-\image{width=4.5in}{sim_design.pdf}
-\caption{From \citealt{diggle2010}}
-\end{figure}
+\image{width=1.5in}{unifSchemeHRes.png}
+\image{width=1.5in}{clustSchemeHRes.png}
+\image{width=1.5in}{prefSchemeHRes.png}
+\\{\footnotesize Sampling processes for Mat\'{e}rn covariance, $\beta=2$, and $\alpha=1$.}
+\end{center}
 Variogram estimation tested under 500 simulations from three sampling designs:
 \begin{enumerate}
 \item[a] Uniform
@@ -304,10 +309,10 @@ Variogram estimation tested under 500 simulations from three sampling designs:
 \emph{Mod.} &  \emph{Param.} &  \multicolumn{3}{c|}{\emph{Confidence intervals}}  \\ \cline{3-5}
 & & \emph{Uniform} & \emph{Preferential} & \emph{Clustered} \\
 \hline
-1 & Bias & (-0.029,  0.038) & (0.956, 1.123) & (-0.074, 0.064) \\ 
-1 & RMSE & (0.354, 0.410) & (1.318, 1.501) & (0.717, 0.851) \\ 
-2 & Bias & (-0.040,  0.030) & (-0.265, -0.195) & (-0.040, 0.032) \\
-2 & RMSE & (0.375, 0.425) & (0.434, 0.491)& (0.382, 0.432) \\
+1 & Bias & (-0.03, 0.04) & (0.96, 1.13) & (-0.07, 0.06) \\ 
+1 & RMSE & (0.38, 0.42) & (1.31, 1.52) & (0.69, 0.79) \\ 
+2 & Bias & (-0.03, 0.02) & (-0.11, -0.06) & (-0.02, 0.04) \\
+2 & RMSE & (0.30, 0.32) & (0.32, 0.34)& (0.30, 0.32) \\
 \hline
 \end{tabular}
 \caption{Classical predictions using 95\% Confidence intervals for the given parameters under the given models and sampling schemes}
@@ -322,27 +327,27 @@ Models:
 %----------------------------------------------------------------------------------------------------------------------------------------
 \begin{frame}
 \frametitle{Preferential Model Likelihood}
-Make gridded approximation of $S = \{S_0, S_1\}$ on lattice $X^* = \set{x_1^*, ..., x_N^*}$.
+Make gridded approximation of $\v{S} = \{\v{S}_0, \v{S}_1\}$ on lattice $\v{X}^* = (x_1^* \ ... \ x_N^*)'$.
 \begin{itemize}
-\item $S_0$ are data
-\item $S_1$ are the values at other grid points
+\item $\v{S}_0$ are true values at data locations
+\item $\v{S}_1$ are true values at other grid points
 \end{itemize}
 \bal
-L(\vt) &= \int \pi(Y \vert X, S) \pi(X \vert S) \pi(S) \ dS \\
+L(\vt) &= \int \pi(\v{Y} \vert \v{X}, \v{S}) \pi(\v{X} \vert \v{S}) \pi(\v{S}) \ d\v{S} \\
 &= \hdots \\
 %&= \int \pi(X \vert S) \pi(Y \vert X, S) \frac{\pi(S \vert Y)}{\pi(S \vert Y)} \pi(S) \ dS \\
 %&= \int \pi(X \vert S) \pi(Y \vert S_0) \frac{\pi(S \vert Y)}{\pi(S_0 \vert Y) \pi(S_1 \vert S_0, Y)} \pi(S) \ dS \\
 %&= \int \pi(X \vert S) \pi(Y \vert S_0) \frac{\pi(S \vert Y)}{\pi(S_0 \vert Y) \pi(S_1 \vert S_0)} \pi(S_0, S_1) \ dS \\
 %&= \int \pi(X \vert S) \pi(Y \vert S_0) \frac{\pi(S \vert Y)}{\pi(S_0 \vert Y)} \pi(S_0) \ dS \\
-&= E_{S \vert Y} \brack{\pi(X \vert S) \frac{\pi(Y \vert S_0)}{\pi(S_0 \vert Y)} \pi(S_0)} \\
-&\approx m^{-1} \sum_{j=1}^m \pi(X \vert S_j) \frac{\pi(Y \vert S_{0j})}{\pi(S_{0j} \vert Y)} \pi(S_{0j})
+&= E_{\v{S} \vert \v{Y}} \brack{\pi(\v{X} \vert \v{S}) \frac{\pi(\v{Y} \vert \v{S}_0)}{\pi(\v{S}_0 \vert \v{Y})} \pi(\v{S}_0)} \\
+&\approx m^{-1} \sum_{j=1}^m \pi(\v{X} \vert \v{S}_j) \frac{\pi(\v{Y} \vert \v{S}_{0j})}{\pi(\v{S}_{0j} \vert \v{Y})} \pi(\v{S}_{0j})
 \eal
-where $S_j$ is the $j$th conditional simulation of $S$ conditioned on $Y$.
+where $\v{S}_j$ is the $j$th conditional simulation of $S$ conditioned on $\v{Y}$.
 \end{frame}
 %----------------------------------------------------------------------------------------------------------------------------------------
 \begin{frame}
 \frametitle{Preferential Model Likelihood}
-Define $C$ as a $n \times N$ matrix with a single 1 in each row and all else 0 s.t. $X = C X^*$.
+Define $C$ as a $n \times N$ matrix with a single 1 in each row and all else 0 s.t. $\v{X} = C \v{X}^*$.
 \\~\\
 Steps for Monte Carlo Simulation:
 \begin{enumerate}
@@ -350,14 +355,14 @@ Steps for Monte Carlo Simulation:
 \item Compute $j$th simulation of $\v{S} \vert \v{Y}$:
 $$ \v{S}_j \defn \v{S} + \Sigma C' \Sigma_0^{-1}(\v{Y} - \v{\mu} + \v{Z} - C \v{S}) $$
 Where $Z_i \iid \Norm{0, \tau^2}$
-\item Calculate $m^{-1} \sum_{j=1}^m \pi(X \vert \v{S}_j) \frac{\pi(\v{Y} \vert \v{S}_{0j})}{\pi(\v{S}_{0j} \vert \v{Y})} \pi(\v{S}_{0j})$
+\item Calculate $m^{-1} \sum_{j=1}^m \pi(\v{X} \vert \v{S}_j) \frac{\pi(\v{Y} \vert \v{S}_{0j})}{\pi(\v{S}_{0j} \vert \v{Y})} \pi(\v{S}_{0j})$
 \end{enumerate}
 \end{frame}
 %----------------------------------------------------------------------------------------------------------------------------------------
 \begin{frame}
 \frametitle{Preferential Model Likelihood}
 \bal
-\pi(X \vert \v{S}_j) &= \paren{\prodi \Lambda(x_i)} \paren{\int \Lambda(x) \ dx}^{-n}\\
+\pi(\v{X} \vert \v{S}_j) &= \paren{\prodi \Lambda(x_i)} \paren{\int \Lambda(x) \ dx}^{-n}\\
 \v{Y} \vert \v{S}_{0j} &\sim \MVN{ \v{S}_{0j}, \tau^2 I} \\
 \v{S}_{0j} \vert \v{Y}  &\sim \MVN{\Sigma C' \Sigma_0^{-1}(\v{Y} - \v{\mu}), \Sigma - \Sigma C' \Sigma_0^{-1} C \Sigma}  \\
 \v{S}_{0j} &\sim \MVN{\v{0}, C \Sigma C'} 
@@ -384,6 +389,15 @@ Then our $p$-value is the rank of $T_1$ out of $T_1, T_2, ..., T_n$ (\emph{i.e.}
 \end{frame}
 %----------------------------------------------------------------------------------------------------------------------------------------
 \begin{frame}
+\frametitle{Goodness of Fit: Test Statistic}
+$$ T = \int_0^{0.25} \frac{\paren{\h{K}(s) - K(s)}^2}{v(s)} \ ds $$
+\\~\\
+$K(s)$: Theoretical $K$-function under MLEs\\
+$\h{K}(s)$: Empirical $K$-function of simulation (or data)\\
+$v(s)$: Variance of $\h{K}(s)$
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
 \frametitle{Goodness of Fit: Monte Carlo Testing}
 \begin{figure}
 \centering
@@ -393,12 +407,83 @@ $p=0.07$
 \end{frame}
 %----------------------------------------------------------------------------------------------------------------------------------------
 \begin{frame}
+\frametitle{Likelihood Fitting}
+\begin{itemize}
+\item Use Nelder-Mead \citep{nelderMead} simplex algorithm for optimization with naive initial guesses
+\begin{itemize}
+\item To simulate the $\v{S}_j$'s quickly, I use cutoff embedding \citep{gneiting2012}
+\end{itemize}
+\item Standard errors and correlations for MLEs inferred using quadratic fit of likelihood surface
+\end{itemize}
+
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Likelihood Fit: Non-Preferential}
+\begin{table}
+\centering
+\begin{tabular}{ccccccccc}
+\hline
+&  \emph{Estimate} & \emph{SE} & & \multicolumn{5}{c}{\emph{Correlation matrix}}  \\ 
+\hline
+$\mu_{97}$ & 1.55 & 0.018 &  & 1 & 0.00 & 0.02 & -0.00 & -0.02 \\ 
+$\mu_{00}$ & 0.73 & 0.014 & &  & 1 & 0.10 & 0.20 & 0.07 \\ 
+$\sigma$ & 0.37 & 0.006 & & &  & 1 & 0.39 & -0.37 \\ 
+$\phi$ & 0.31 & 0.039 & &  &  &  & 1 & 0.47 \\ 
+$\tau$ & 0.23 & 0.005 & & &  & &  & 1 \\ 
+\hline
+\end{tabular}
+\caption{Estimates are under joint 1997 and 2000 model}
+\end{table}
+
+\begin{itemize}
+\item Likelihood ratio test performed for joint versus separate models:
+\begin{itemize}
+\item $p=0.007$ under 3 degrees of freedom
+\end{itemize}
+\end{itemize}
+
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{1997 Predictions}
+\begin{center}
+\image{width=1.2in}{pref5.png}
+\image{width=1.2in}{pref50.png}
+\image{width=1.45in}{pref95.png}\\
+\vspace{-.05in} {\tiny Preferential (MLEs from \citep{diggle2010}): ($\h{\mu}_{97} = 1.515, \h{\mu}_{00} = 0.762, \h{\sigma}^2=0.138, \h{\phi}=0.313, \h{\tau}^2=0.059$)}
+\\
+\image{width=1.2in}{np5.png}
+\image{width=1.2in}{np50.png}
+\image{width=1.45in}{np95.png}\\
+\vspace{-.05in} {\tiny Non-preferential (MLEs fit with naive initial guess): ($\h{\mu}_{97} = 1.551, \h{\mu}_{00} = 0.727, \h{\sigma}^2=0.136, \h{\phi}=0.305, \h{\tau}^2=0.052$)}
+\end{center}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{1997 Predictions}
+\begin{center}
+\image{width=1.3in}{over3.pdf}
+\image{width=1.3in}{over5.pdf}
+\image{width=1.34in}{over7.pdf}
+\\
+{Areal proportion predicted over 3 (left), 5 (middle) and 7 (right) \\ $\mu$ g/(g dry weight) for preferential (solid) and non-preferential (dashed) MLEs}
+\end{center}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
 \frametitle{Problems with the Methodology}
 \begin{itemize}
-\item No cross-validation performed (effectiveness of $K$-function goodness of fit tests unclear)
-\item Predictive distribution assumes non-preferentiality with plug-in parameters from preferential model
-\item Predictive distribution has unreasonable certainty in locations far from data
-\item Joint non-preferential model gives parameters similar to preferential model parameters:
+\setlength\itemsep{.15in}
+\item Using the joint model for 1997 predictions
+\item Assuming independence of 1997 and 2000 data in fitting
+\item No cross-validation performed
+\item No evaluation of preferential model in simulation study
+\item True preferential predictive distribution not used nor given
+\begin{itemize}
+\item True predictive distribution may be Gaussian, although its parameters are unclear
+\end{itemize}
+\item Non-preferential MLEs similar to preferential MLEs:
 \begin{itemize}
 \item My non-preferential model: \\
 $(\h{\mu}_{97} = 1.551, \h{\mu}_{00} = 0.727, \h{\sigma}^2=0.136, \h{\phi}=0.305, \h{\tau}^2=0.052)$
@@ -411,12 +496,14 @@ $(\h{\mu}_{97} = 1.515, \h{\mu}_{00} = 0.762, \h{\sigma}^2=0.138, \h{\phi}=0.313
 \begin{frame}
 \frametitle{Conclusions}
 \begin{itemize}
-\item For preferential simulations, variograms estimated naively were biased
+\setlength\itemsep{.15in}
+\item Accounting for preferentiality is important
+\item For empirical variogram estimation and classical prediction:
+\begin{itemize}
 \item Uniform sampling performed best, then clustered, then preferential
-\item Proposed class of models is flexible and values for $\beta$ can be tested directly with likelihood ratio test
-\item LGCP isn't necessarily the best fit for the log-lead data
-\item LGCP model gives tractable Monte Carlo likelihood
-\item LGCP model has easy goodness of fit tests
+\item For preferential data, naive variogram estimates and predictions were biased
+\end{itemize}
+\item Proposed class of models is flexible and tractable for geostatistics with preferential data
 \end{itemize}
 \end{frame}
 %----------------------------------------------------------------------------------------------------------------------------------------
@@ -431,9 +518,22 @@ $(\h{\mu}_{97} = 1.515, \h{\mu}_{00} = 0.762, \h{\sigma}^2=0.138, \h{\phi}=0.313
 \bibliographystyle{../te}
 \bibliography{../prelim}
 \end{frame}
+
+%----------------------------------------------------------------------------------------------------------------------------------------
+\begin{frame}
+\frametitle{Appendix: Understanding the Preferential Likelihood}
+ \bal
+L(\theta) &= \int_S [\v{X} \vert \v{S}] [\v{Y} \vert \v{S}, \v{X}] \frac{[\v{S} \vert \v{X}, \v{Y}]_{np}}{[\v{S} \vert \v{X}, \v{Y}]_{np}} [\v{S}] \ d\v{S} \\
+&= \int_S [\v{X} \vert \v{S}] [\v{Y} \vert \v{S}, \v{X}] \frac{[\v{S} \vert \v{X}, \v{Y}]_{np}}{[\v{S}_1 \vert \v{S}_0, \v{X}, \v{Y}]_{np} [\v{S}_0 \vert \v{X}, \v{Y}]_{np}} [\v{S}_1 \vert \v{S}_0] [\v{S}_0] \ d\v{S} \\
+&= \int_S [\v{X} \vert \v{S}] \frac{[\v{Y} \vert \v{S}, \v{X}]}{[\v{S}_1 \vert \v{S}_0, \v{X}, \v{Y}]_{np} [\v{S}_0 \vert \v{X}, \v{Y}]_{np}} [\v{S}_1 \vert \v{S}_0] [\v{S}_0] [\v{S} \vert \v{X}, \v{Y}]_{np} \ d\v{S} \\
+&= \int_S [\v{X} \vert \v{S}] \frac{[\v{Y} \vert \v{S}_0, \v{X}]}{[\v{S}_1 \vert \v{S}_0, \v{X}]_{np} [\v{S}_0 \vert \v{X}, \v{Y}]_{np}} [\v{S}_1 \vert \v{S}_0] [\v{S}_0] [\v{S} \vert \v{X}, \v{Y}]_{np} \ d\v{S} \\
+&= \int_S [\v{X} \vert \v{S}] \frac{[\v{Y} \vert \v{S}_0, \v{X}]}{[\v{S}_1 \vert \v{S}_0, \v{X}]_{np} [\v{S}_0 \vert \v{X}, \v{Y}]_{np}} [\v{S}_1 \vert \v{S}_0] [\v{S}_0] [\v{S}  \vert \v{X} , \v{Y} ]_{np} \ d\v{S} \\
+&= E_{[S \vert \v{X}, \v{Y}]_{np}} \brack{ [\v{X} \vert \v{S}] \frac{[\v{Y} \vert \v{S}_0, \v{X}]}{[\v{S}_0 \vert \v{X}, \v{Y}]_{np}} [\v{S}_0]  } 
+\eal
+\end{frame}
 %---------------------------------------------------------------------------------------------------------------------------------------
 
-
+\section{Appendix}
 
 \end{document}
 

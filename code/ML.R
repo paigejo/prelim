@@ -195,6 +195,27 @@ MLStandard = function(coords97, log97, coords00, log00,
 # > likRatioTest(out$MLEs97$value, out$MLEs0$value, out$MLEsJoint$value)
 # [1] 0.006789688
 
+#now test with different initial phi (.2 instead of .3):
+# > initParams=c(mean(log97), mean(log00), log(sd(c(log00, log97))), log(.2), log(sqrt(10^-3)))
+# > out = MLStandard(coords97, log97, coords00, log00, initParams=initParams)
+# > out$MLEs97$par
+# mu97    sigmasq        phi      tausq 
+# 1.54216395 0.14647542 0.19299668 0.08301467 
+# > out$MLEs00$par
+# mu00    sigmasq        phi      tausq 
+# 0.72610924 0.15460217 0.27660228 0.01295058 
+# > out$MLEsJoint$par
+# mu97       mu00    sigmasq        phi      tausq 
+# 1.54701200 0.72870787 0.13107395 0.28685933 0.05161165 
+# > out$MLEs97$value
+# [1] -37.20306
+# > out$MLEs00$value
+# [1] -37.04478
+# > out$MLEsJoint$value
+# [1] -80.3618
+# > likRatioTest(out$MLEs97$value, out$MLEs0$value, out$MLEsJoint$value)
+# [1] 0.006641852
+
 # test if sigma phi and tau are the same
 likRatioTest = function(loglik97, loglik00, loglikJoint) {
   testStat = 2*(loglik97 + loglik00 - loglikJoint)
@@ -355,7 +376,7 @@ MLPref = function(coords97, log97, coords00, log00,
   getLiks97 = function(params, catTable=TRUE) {
     # Evaluate log likelihood
     out = likPreferentialMC(params, latticeCoords, log97, distMat97Lattice, C, Ct, inds, 
-                             res=res, nsims=nMCSamples, doPar, nProc)
+                             res=res, nsims=nMCSamples, doPar=doPar, nProc=nProc)
     loglik = out$logLik
     
     if(!is.finite(loglik))
@@ -726,9 +747,11 @@ hessianToSE = function(hessMat, logVec = rep(F, nrow(hessMat)), estimates=NULL) 
 # library(xtable)
 # xtable(hessianToCorrMat(out$MLEsJoint$hessian))
 # xtable(hessianToCovMat(out$MLEsJoint$hessian))
-pars = out$MLEsJoint$par
-pars[c(3,5)] = sqrt(pars[c(3,5)])
-hessianToSE(out$MLEsJoint$hessian, c(F, F, T, T, T), pars)
+# pars = out$MLEsJoint$par
+# pars[c(3,5)] = sqrt(pars[c(3,5)])
+# pars[3:5] = log(pars[3:5])
+# hessianToSE(out$MLEsJoint$hessian, c(F, F, T, T, T), pars)
+# xtable(summ)
 
 #find what reltol to use for Neld-Mead
 

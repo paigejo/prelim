@@ -1,7 +1,9 @@
 # Functions for estimating bias and SDs of Kriging predictions based on 
 # the sampling designs from simulatePP.R
 
-unitSquareKriging = function(nsims = 500) {
+unitSquareKriging = function(nsims = 500, seed=1) {
+  set.seed(seed)
+  
   unifPreds = 1:nsims
   clustPreds = 1:nsims
   prefPreds = 1:nsims
@@ -23,8 +25,8 @@ unitSquareKriging = function(nsims = 500) {
   prefPPs1 = genPreferentialPP2(numSamples = nsims, method="cutoff")
   GPs1 = prefPPs1$GPs
   unifPPs2 = genUnifPP(numSamples = nsims)
-  clustPPs2 = genClusterPP2(numSamples = nsims,mu=1.515, sigmasq=.138, phi=.313, kappa=.5, beta=-2.198, tausq=.059, method="cutoff")
-  prefPPs2 = genPreferentialPP2(numSamples = nsims,mu=1.515, sigmasq=.138, phi=.313, kappa=.5, beta=-2.198, tausq=.059, method="cutoff")
+  clustPPs2 = genClusterPP2(numSamples = nsims,mu=1.515, sigmasq=.138, phi=.313, kappa=.5, beta=-2.198, tausq=0, method="cutoff")
+  prefPPs2 = genPreferentialPP2(numSamples = nsims,mu=1.515, sigmasq=.138, phi=.313, kappa=.5, beta=-2.198, tausq=0, method="cutoff")
   GPs2 = prefPPs2$GPs
   lambda = .059/.138
   
@@ -109,9 +111,9 @@ unitSquareKriging = function(nsims = 500) {
   unifRMSMean1 = sqrt(mean((unifPreds1 - trueVals1)^2))
   clustRMSMean1 = sqrt(mean((clustPreds1 - trueVals1)^2))
   prefRMSMean1 = sqrt(mean((prefPreds1 - trueVals1)^2))
-  unifRMSE1 = sd((unifPreds1 - trueVals1)^2)/(2*sqrt(nsims)*unifRMSMean1)
-  clustRMSE1 = sd((clustPreds1 - trueVals1)^2)/(2*sqrt(nsims)*clustRMSMean1)
-  prefRMSE1 = sd((prefPreds1 - trueVals1)^2)/(2*sqrt(nsims)*prefRMSMean1)
+  unifRMSE1 = sd((unifPreds1 - trueVals1)^2)/(2*sqrt(nsims)*sqrt(unifRMSMean1))
+  clustRMSE1 = sd((clustPreds1 - trueVals1)^2)/(2*sqrt(nsims)*sqrt(clustRMSMean1))
+  prefRMSE1 = sd((prefPreds1 - trueVals1)^2)/(2*sqrt(nsims)*sqrt(prefRMSMean1))
   unifRMSConf1 = c(unifRMSMean1 - zThresh*unifRMSE1, unifRMSMean1 + zThresh*unifRMSE1)
   clustRMSConf1 = c(clustRMSMean1 - zThresh*clustRMSE1, clustRMSMean1 + zThresh*clustRMSE1)
   prefRMSConf1 = c(prefRMSMean1 - zThresh*prefRMSE1, prefRMSMean1 + zThresh*prefRMSE1)
@@ -120,9 +122,9 @@ unitSquareKriging = function(nsims = 500) {
   unifRMSMean2 = sqrt(mean((unifPreds2 - trueVals2)^2))
   clustRMSMean2 = sqrt(mean((clustPreds2 - trueVals2)^2))
   prefRMSMean2 = sqrt(mean((prefPreds2 - trueVals2)^2))
-  unifRMSE2 = sd((unifPreds2 - trueVals2)^2)/(2*sqrt(nsims)*unifRMSMean2)
-  clustRMSE2 = sd((clustPreds2 - trueVals2)^2)/(2*sqrt(nsims)*clustRMSMean2)
-  prefRMSE2 = sd((prefPreds2 - trueVals2)^2)/(2*sqrt(nsims)*prefRMSMean2)
+  unifRMSE2 = sd((unifPreds2 - trueVals2)^2)/(2*sqrt(nsims)*sqrt(unifRMSMean2))
+  clustRMSE2 = sd((clustPreds2 - trueVals2)^2)/(2*sqrt(nsims)*sqrt(clustRMSMean2))
+  prefRMSE2 = sd((prefPreds2 - trueVals2)^2)/(2*sqrt(nsims)*sqrt(prefRMSMean2))
   unifRMSConf2 = c(unifRMSMean2 - zThresh*unifRMSE2, unifRMSMean2 + zThresh*unifRMSE2)
   clustRMSConf2 = c(clustRMSMean2 - zThresh*clustRMSE2, clustRMSMean2 + zThresh*clustRMSE2)
   prefRMSConf2 = c(prefRMSMean2 - zThresh*prefRMSE2, prefRMSMean2 + zThresh*prefRMSE2)
